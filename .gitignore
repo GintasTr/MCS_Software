@@ -109,4 +109,8 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+#pycharm folder
+/.idea
+.idea
 >>>>>>> 86169a6cb7a33aa46bd191c86d5a5d780c388cc8
