@@ -134,7 +134,7 @@ def ColorAveraging(flat_image, Calibration_coords):
     return values
 
 def apply_filter(Calibration_values, img):
-    Std_constant = 2 #TODO how many STD of values we allow, how much of illumination?
+    Std_constant = 2,5 #TODO how much of illumination?
     min_value = 30 #minimal illumination of the object
     img = img.toHSV()
     Filtered = img.hueDistance(color = Calibration_values["AvHue"],
@@ -200,7 +200,7 @@ def Flat_Calibration():
     return values
 
 def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
-    blobs_threshold = 170
+    blobs_threshold = 170 ##TODO Modify the actual thresholds
     blobs_min_size = 1000
     slope_calibration_done = False
     while (not slope_calibration_done):
@@ -248,12 +248,11 @@ def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
 ## MAIN SOFTWARE
 
 setup()
-debug_mode = False  ##REPLACE WITH debug() for a question.
-##Calibration supposed to be here.
+debug_mode = False  ##REPLACE WITH debug() for a question.##TODO add debug_mode check where needed
 flat_data = Flat_Calibration()
 slope_data = Slope_Calibration(flat_data["AvHue"],flat_data["AvSat"], flat_data["StdSat"],
                                 flat_data["mouseX"], flat_data["mouseY"])
-
+#TODO calibrate these thresholds
 blobs_threshold = 170
 blobs_min_size = 8000
 ## Main loop:
