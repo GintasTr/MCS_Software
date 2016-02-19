@@ -1,5 +1,6 @@
 from SimpleCV import *
 import cv2
+import time
 
 # to turn on/off video feedback for calibration
 def calibration():
@@ -56,6 +57,9 @@ screen = calibration()
 setup()
 
 ## Main loop:
+start = time.clock()
+elapsed_old = 0
+
 while True:
     Img = GetImage()
 
@@ -88,3 +92,9 @@ while True:
     if screen == True:
         ShowWindow("Hue", Filtered)
         Img.show()
+
+    elapsed = (time.clock() - start)
+    delta_t = elapsed - elapsed_old
+    elapsed_old = elapsed
+    print elapsed, "Total time"
+    print delta_t, "Delta T"

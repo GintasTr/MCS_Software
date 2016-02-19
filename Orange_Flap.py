@@ -138,7 +138,7 @@ def apply_filter(Calibration_values, img):
                                minsaturation = minsaturation,
                                minvalue = min_value)
     Filtered = Filtered.invert()
-    #Filtered = Filtered.morphClose()
+    #Filtered = Filtered.morphClose() #I THINK THIS SHOULD BE OPEN
     Filtered = Filtered.dilate(2) #TODO test these morph ops...
     Filtered = Filtered.erode(1)
     return Filtered

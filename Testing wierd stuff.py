@@ -35,14 +35,29 @@ while(1):
         print k # else print its value
 """
 
+img = Image("Cropped2.jpg")
+img = img.toGray()
+img_gray = img.getGrayNumpy()
+average_gray = np.mean(img_gray)
 
 
-coords1 = (141,355)
-coords2 = (96,394)
-x_dist = abs(coords1[0] - coords2[0])                       # Get maximum X distance
-y_dist = abs(coords1[1] - coords2[1])                       # Get maximum Y distance
-max_dist = sqrt(x_dist**2 + y_dist**2)                        # Basic calculation of diagonal distance
-max_dist = int(round(max_dist))                                                            # Make max dist integer
-print x_dist                                                # For debugging
-print y_dist
-print max_dist
+print img_gray.shape
+print img_gray
+print average_gray
+
+    # print hsv[:,:,0], "HUE"
+    # print hsv[:,:,1], "SAT"
+    # print hsv[:,:,2], "VAL"
+
+    # avgHue = np.mean(hsv[:,:,0])
+    # print avgHue, "AVG Hue"
+    #
+    # avgSat = np.mean(hsv[:,:,1])
+    # stdSat = np.std(hsv[:,:,1])
+    # minSat = np.min(hsv[:,:,1])
+    # avgVal = np.mean(hsv[:,:,2])
+    # print avgSat, "avgSat"
+    # # print stdSat, "stdSat"
+    # # print minSat, "minSat"
+    # print avgVal, "avgVal"
+
