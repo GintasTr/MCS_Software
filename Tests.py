@@ -17,45 +17,6 @@ def setup():
     time.sleep(1)
 
 
-"""
-b = np.arange((4*4*3))
-b = b.reshape(4,4,3)
-print b
-
-avg = np.mean(b[:,:,0])
-print avg, "AVG"
-d = np.std(b[:,:,0])
-print d, "STD"
-"""
-
-"""
-img = Image("Cropped.jpg")
-#hsv = img.toHSV()
-
-hsv = img.getNumpyCv2()
-hsv = cv2.cvtColor(hsv, cv2.COLOR_BGR2HSV)
-
-hsvmean = np.mean(hsv, axis = 0)
-
-print hsv.shape
-
-
-hsvStd = np.std(hsvmean, axis = 0)
-hsvmean = np.mean(hsvmean, axis = 0)
-print hsvStd, "STD"
-print hsvmean, "mean" #correct
-
-meanHue = hsvmean[0]
-meanSat = hsvmean[1]
-stdSat = hsvStd[1]
-
-print meanHue
-print meanSat
-print stdSat
-
-"""
-
-
 def GetClickCoords(img, RequestText):
     print RequestText                                           # Ask user to click on display
     disp = Display()                                            # Create a display

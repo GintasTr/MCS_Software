@@ -132,11 +132,11 @@ def ColorAveraging(flat_image, Calibration_coords):
 def apply_filter(Calibration_values, img):
     Std_constant = 6 #TODO how much of illumination?
     min_value = 30 #minimal illumination of the object
-    minsaturation = (Calibration_values["AvSat"]- Std_constant * Calibration_values["StdSat"])
+    minsaturation = (Calibration_values["AvSat"]/2)
     img = img.toHSV()
     Filtered = img.hueDistance(color = Calibration_values["AvHue"],
-                               minsaturation = minsaturation,
-                               minvalue = min_value
+                               minsaturation = minsaturation
+                               #minvalue = min_value
                                )
     Filtered = Filtered.invert()
     #Filtered = Filtered.morphClose() #I THINK THIS SHOULD BE OPEN
@@ -147,8 +147,8 @@ def apply_filter(Calibration_values, img):
 
 # Calibration procedure
 def Flat_Calibration():     #TODO rearrange functions to avoid function-in function, to have only 1 variable passable in between
-    #blobs_threshold = 170
-    #blobs_min_size = 1000
+    blobs_threshold_flat = 130
+    blobs_min_size_flat = 1000
     flat_calibration_done = False
     while (not flat_calibration_done):  # Repeat until flat flap calibration is performed correctly
         flat_image = AcquireFlatImage()
@@ -158,7 +158,7 @@ def Flat_Calibration():     #TODO rearrange functions to avoid function-in funct
         Calibration_values = ColorAveraging(flat_image, Calibration_coords)
         filteredImage = apply_filter(Calibration_values, flat_image)
         #TODO replace this here and everywhere else with function findAndSortBlobs.
-        possible_flaps = filteredImage.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)   #CAN ADD SIZES AND STUFF
+        possible_flaps = filteredImage.findBlobs(threshval = blobs_threshold_flat, minsize=blobs_min_size_flat)   #CAN ADD SIZES AND STUFF
         if possible_flaps > 1:
             possible_flaps.sortDistance(point =(Calibration_coords[0], Calibration_coords[1]))
             for i in range(0, len(possible_flaps)):
@@ -178,7 +178,7 @@ def Flat_Calibration():     #TODO rearrange functions to avoid function-in funct
         while disp.isNotDone(): # Loop until display is not needed anymore
             if disp.mouseLeft:  #   Check if left click was used on display
                 disp.done = True    # Turn off Display
-            filteredImage.show()  # Show the image on Display
+            flat_image.show()  # Show the image on Display
         Display().quit()    # Exit the display so it does not go to "Not responding"
 
         while True: # Loop until valid response
@@ -198,11 +198,13 @@ def Flat_Calibration():     #TODO rearrange functions to avoid function-in funct
     return values
 
 def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
+    blobs_threshold_slope = 100
+    blobs_min_size_slope = 1000
     slope_calibration_done = False
     while (not slope_calibration_done):
         slope_image = AcquireSlopeImage()
         filtered_image = apply_filter({"AvHue": AvHue, "AvSat": AvSat, "StdSat": StdSat}, slope_image)
-        possible_flaps = filtered_image.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)   #CAN ADD SIZES AND STUFF
+        possible_flaps = filtered_image.findBlobs(threshval = blobs_threshold_slope, minsize=blobs_min_size_slope)   #CAN ADD SIZES AND STUFF
         if possible_flaps > 1:
             possible_flaps.sortDistance(point =(mouseX, mouseY))
             for i in range(0, len(possible_flaps)):
@@ -220,7 +222,7 @@ def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
         while disp.isNotDone(): # Loop until display is not needed anymore
             if disp.mouseLeft:  #   Check if left click was used on display
                 disp.done = True    # Turn off Display
-            filtered_image.show()  # Show the image on Display
+            slope_image.show()  # Show the image on Display
         Display().quit()    # Exit the display so it does not go to "Not responding"
 
         while True: # Loop until valid response
@@ -244,8 +246,8 @@ setup()
 debug_mode = False  ##REPLACE WITH debug() for a question.##TODO add debug_mode check where needed
 
 #TODO calibrate these thresholds
-blobs_threshold = 170   #thresholds for calibration blob detection and main process blob detection
-blobs_min_size = 1000
+blobs_threshold_main = 130   #thresholds for calibration blob detection and main process blob detection
+blobs_min_size_main = 1000
 
 flat_data = Flat_Calibration()
 slope_data = Slope_Calibration(flat_data["AvHue"], flat_data["AvSat"], flat_data["StdSat"],
@@ -258,12 +260,14 @@ while True:
     Img = GetImage()
     Img = Img.toHSV()
     filtered = apply_filter(flat_data, Img)
-    possible_flaps = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
+    possible_flaps = filtered.findBlobs(threshval = blobs_threshold_main, minsize=blobs_min_size_main)
     if possible_flaps > 1:
         possible_flaps.sortDistance(point = (flat_data["mouseX"], flat_data["mouseY"]))
     elif possible_flaps < 1:
         print "No flaps found"
         continue
+    possible_flaps.draw(width=3)
+    filtered.show()
     flap = possible_flaps[-1]
     #Img.dl().rectangle2pts(flap.topLeftCorner(), flap.bottomRightCorner(),Color.RED, width = 5) #FOR FEEDBACK ONLY
     #Img.show()  #FOR FEEDBACK ONLY
