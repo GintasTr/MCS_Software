@@ -149,9 +149,13 @@ def GetColourData(img, coords):
 def object_type():
     QUESTION_TO_ASK ="Type in the name of the object type (no spaces):"
     CONFIRMATION_TEXT = "Object name is %s. And it is one word. Y/N?"
+    SINGLE_WORD_WARNING = "Please, enter only single word (or use _ to seperate words)"
     correct_name = False                            # Initialise naming loop
     while not correct_name:                         # Start looping
         object_type_name = raw_input(QUESTION_TO_ASK + "\n>>>")
+        if len(object_type_name.split()) > 1:
+            print SINGLE_WORD_WARNING
+            continue
         if GetConfirmation(CONFIRMATION_TEXT%object_type_name) == False:
             continue                                # If incorrect name, loop again
         correct_name = True                         # If correct name, return it
@@ -163,7 +167,8 @@ def store_results(object_coords_stored, object_name_stored, object_area_stored,
                   object_rect_distance_stored, object_aspect_ratio_stored,
                   object_average_hue, object_average_sat, object_std_sat):
 
-    storage = open("foreign_object_data.txt", "w")
+    FILE_NAME = object_name_stored + ".txt"
+    storage = open(FILE_NAME, "w")
     storage.write("""object_coord_x: %s
 object_coord_y: %s
 object_name_stored: %s
@@ -187,6 +192,7 @@ object_average_sat: %s
 object_std_sat: %s""" %(object_coords_stored[0],object_coords_stored[1], object_name_stored, object_area_stored,
                   object_rect_distance_stored, object_aspect_ratio_stored,
                   object_average_hue, object_average_sat, object_std_sat)
+    return FILE_NAME
 
 # Function to get the required foreign object data
 def get_object_data():
@@ -257,15 +263,16 @@ def perform_calibration():
     object_average_sat = object_data["colour_data"]["avg_sat"]
     object_std_sat = object_data["colour_data"]["std_sat"]
 
-    store_results(object_coords_stored, object_name_stored, object_area_stored,
+    FILE_NAME = store_results(object_coords_stored, object_name_stored, object_area_stored,
                   object_rect_distance_stored, object_aspect_ratio_stored,
                   object_average_hue, object_average_sat, object_std_sat)
+    return FILE_NAME
 # MAIN SOFTWARE:
 # Initialisation:
 
 setup()                                                         # Perform camera setup
 
 ### CALIBRATION PART
-perform_calibration()
+FILE_NAME = perform_calibration()
 
-raw_input("Calibration Done. Saved as foreign_object_data.txt")
+raw_input("Calibration Done. Saved as " + FILE_NAME)

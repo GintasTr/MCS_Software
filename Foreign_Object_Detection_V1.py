@@ -1,6 +1,7 @@
 from SimpleCV import *
 import cv2
 from os.path import exists
+from sys import argv
 
 # prepares, selects the camera
 def setup():
@@ -45,7 +46,7 @@ def ObjectDetection(img, coords, data, object_area):
 
 # READ THE DATA STORED IN CALIBRATION FILE
 def read_calibration_data():
-    storage = open("foreign_object_data.txt")
+    storage = open(NAME_OF_CALIBRATION_FILE)
     object_coord_x = float(storage.readline().split()[1])
     object_coord_y = float(storage.readline().split()[1])
     object_name_stored = (storage.readline().split()[1:])
@@ -89,12 +90,12 @@ def process_a_result(foreign_object):
 # Function to calculate average of the results and return the final one
 def calculate_average(results):
     Possibilities = {                 # Get the dictionary with all the options
-    "Not_found": 0,                    # Initialise variable for "No blobs found"
+    "Not found": 0,                    # Initialise variable for "No blobs found"
     "Object is present": 0,                        # Initialise variable for "Open"
     }
     for variable in results:                    # Increment each time the specific result is acquired
         if variable[0] == "N":
-            Possibilities["Not_found"] += 1
+            Possibilities["Not found"] += 1
         elif variable[0] == "O":
             Possibilities["Object is present"] += 1
         else:
@@ -103,17 +104,22 @@ def calculate_average(results):
                                                 # Get the max value of the dictionary
     return Final_result
 
-# MAIN SOFTWARE:
+
+### MAIN SOFTWARE:
 
 setup()
 
-n = 10                              # NUMBER OF SAMPLE IMAGES
-results = range(n)                  # Create a list of results
+NAME_OF_FOREIGN_OBJECT = str(argv[1])                   # NAME OF THE FOREIGN OBJECT WHICH IS DETECTED.
+                                                        # ALSO NAME OF THE FILE WITH CALIBRATION DATA
+NAME_OF_CALIBRATION_FILE = NAME_OF_FOREIGN_OBJECT + ".txt"
+print "Scanning for" + NAME_OF_CALIBRATION_FILE         # Prompt the user which object is being detected
+n = 10                                                  # NUMBER OF SAMPLE IMAGES
+results = range(n)                                      # Create a list of results
 
 
 # Perform camera setup
-if not exists("valve_handle_data.txt"):
-    raw_input("Calibration has not been done. Please do the calibration first before running the scan")
+if not exists(NAME_OF_CALIBRATION_FILE):
+    raw_input("Calibration for this object has not been done. Please do the calibration first before running the scan")
     #return "error"             FOR LATER
 
 # Read and store the calibration data
@@ -147,4 +153,4 @@ for i in range(0, len(results)):
 
 final_result = calculate_average(results)
 
-print "Coolant valve handle position is:", final_result
+print "%s is:" %NAME_OF_FOREIGN_OBJECT, final_result
