@@ -21,6 +21,7 @@ def show_image_until_pressed(img):
 def show_image_briefly(img):
     img.show()                                              # Show the image on Display
 
+
 # Function to get the image from camera
 def GetImage():
     img = cam.getImage()                                            # Get image from camera
@@ -29,6 +30,7 @@ def GetImage():
     return img
 
 
+# Function to get user confirmation about the image
 def GetConfirmation(ConfirmationText):
     while True:                                                     # Loop until valid response
         print ConfirmationText                                      # Ask for confirmation
