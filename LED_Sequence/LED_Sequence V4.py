@@ -1,7 +1,12 @@
 from SimpleCV import *
 import cv2
-from UserInterface import *
-from cameraWrapper import *
+
+
+# prepares, selects the camera
+def setup():
+    global cam
+    cam = Camera()
+    time.sleep(1)
 
 # Shows the image until the button is pressed
 def show_image_until_pressed(img):
@@ -17,39 +22,82 @@ def show_image_briefly(img):
     img.show()                                              # Show the image on Display
 
 
-# prepares, selects the camera
-def setup():
-    global userInterface
-    cam = Camera()
-    global cameraWrapper
-    cameraWrapper = CameraWrapper(cam)
-    userInterface = UserInterface(cameraWrapper)
+# Function to get the image from camera
+def GetImage():
+    img = cam.getImage()                                            # Get image from camera
+    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    return img
 
 
-    time.sleep(1)
+# Function to get user confirmation about the image
+def GetConfirmation(ConfirmationText):
+    while True:                                                     # Loop until valid response
+        print ConfirmationText                                      # Ask for confirmation
+        try:                                                        # Catch Index error in case of too fast response
+            userInput = raw_input()                                 # Check user input
+            userInput = userInput.lower()                           # Make it lower case
+            if userInput[0] == "y":                                 # Check if it is y, n, or something else
+                return True                                         # Return respective values
+            elif userInput[0] == "n":
+                return False
+        except(IndexError):                                         # In case of Index error (too fast response)
+            print "Something is wrong, try again."
+        else:
+            print "Incorrect value entered."
 
 
+# Function for getting the correct image
+def RequestConfirmedImage(RequestText, ConfirmationText1, ConfirmationText2):
+    confirmation = False                                        # Initialise the confimation loop
+    while not confirmation:                                     # Loop until confirmation = True
+        raw_input(RequestText)                                  # Show the request to put camera nicely.
+        img = GetImage()                                        # Get image from camera
+        print ConfirmationText1                                 # Ask to close the image and then answer
+        disp = Display()                                        # Create a display
+        while disp.isNotDone():                                 # Loop until display is not needed anymore
+            if disp.mouseLeft:                                  # Check if left click was used on display
+                disp.done = True                                # Turn off Display
+            img.show()                                          # Show the image on Display
+        Display().quit()                                        # Exit the display so it does not go to "Not responding"
+        confirmation = GetConfirmation(ConfirmationText2)       # Ask whether LED was clearly visible and confirm.
+    return img
+
+
+# Function for getting mLedCoords:
+def GetClickCoords(img, RequestText):
+    print RequestText                                           # Ask user to click on display
+    disp = Display()                                            # Create a display
+    while disp.isNotDone():                                     # Loop until display is not needed anymore
+        img.clearLayers()                                       # Clear old drawings
+        if disp.mouseLeft:
+            mouse_coords = [disp.mouseX, disp.mouseY]           # Show coords on screen with modifiable square size
+            text = "X:" + str(mouse_coords[0]) + " Y:" + str(mouse_coords[1])
+            img.dl().text(text, (mouse_coords[0] + 10, mouse_coords[1] + 10), color=Color.RED)
+            img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]], color = Color.RED, dimensions = [20,20])
+        if disp.mouseRight:                                     # If right clicked
+            disp.done = True                                    # Turn off Display
+        img.save(disp)                                          # Show the image on Display
+    Display().quit()                                            # Exit the display so it does not go to "Not responding"
+    return mouse_coords                                         # Return mouseX and mouseY as mouse_coords[0] and [1]
 
 
 # Function to detect the main LED:
 def MainLedDetection(img, coords, data):
-    Std_constant = 3                                            # Describes how many std dev of value to include
-    min_brightness = 200                                        # Minimal illumination threshold
+    min_brightness = 230                                        # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 200                                       # Specify blobs colour distance threshold
-    blobs_min_size =  500                                       # Specify minimum blobs size
-    blobs_max_size = 10000                                      # Specify max size of blob
+    blobs_max_size = 7000                                      # Specify max size of blob
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
-                               minsaturation = minsaturation,
                                minvalue = min_brightness)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     filtered = filtered.morphOpen()                             # Perform morphOps
                                                                 # Look for blobs
-    all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size, maxsize=blobs_max_size)
+    all_blobs = filtered.findBlobs(maxsize=blobs_max_size,threshval = 200 )
+    #all_blobs.draw()#
+    #show_image_until_pressed(filtered)#
     if all_blobs > 1:                                           # If more than 1 blob found
         all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
         for i in range(0, len(all_blobs)):                      # For every found blob draw a rect on filtered image
@@ -60,10 +108,6 @@ def MainLedDetection(img, coords, data):
     elif all_blobs < 1:                                         # If none blobs found
         # print "No blobs found"                                # Print and return that no blobs were found. Not needed
         return "No blobs found"
-    # d= Display()                                               # For debugging
-    # while d.isNotDone():
-    #     filtered.show()
-    # d.quit()
     m_led = all_blobs[-1]                                       # m_led is the closest blob to mouse click
     return m_led
 
@@ -104,7 +148,7 @@ def ConfirmMainLed(img, blob, confirmationText, confirmationText2):
         img.show()                                              # Show the image on Display
     Display().quit()    # Exit the display so it does not go to "Not responding"
 
-    if not userInterface.GetConfirmation(confirmationText2):
+    if not GetConfirmation(confirmationText2):
         return False
     return True
 
@@ -144,7 +188,7 @@ def LedDistance(coords1, coords2):
 
 # Function to measure average illumination around LEDs TODO: Think about implementing threshold filter instead
 def GetLight(img, coords, hsv_data, dist):
-    dist_scalar = 2.6                                           # Margin of distance to include both LEDs
+    dist_scalar = 3                                           # Margin of distance to include both LEDs
     crop_length = int(round(dist_scalar*dist))
     main_blob = MainLedDetection(img,coords,hsv_data)           # Get main led blob. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
@@ -186,7 +230,7 @@ def GetLight(img, coords, hsv_data, dist):
 
 
 def BlobsNumber(img, coords, hsv_data, dist):
-    dist_scalar = 2.6                                           # Margin of distance to include both LEDs
+    dist_scalar = 3                                           # Margin of distance to include both LEDs
     crop_length = int(round(dist_scalar*dist))
     main_blob = MainLedDetection(img,coords,hsv_data)           # Get main led blob. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
@@ -202,6 +246,7 @@ def BlobsNumber(img, coords, hsv_data, dist):
     cropped = cropped.binarize(thresh=bin_thresh)               # Binarize the cropped image
     cropped = cropped.invert()                                  # Invert so that light areas are white
     cropped = cropped.morphOpen()
+    cropped = cropped.dilate(iterations=2)                      # If from close - change to 1
     cropped.show()
     all_blobs = cropped.findBlobs()
     if all_blobs<1:                           # Check whether blobs were found
@@ -222,16 +267,16 @@ def PerformCalibration():
     calibration_done = False                                    # Initialises loop
     while not calibration_done:                                 # Loop while calibration is not done
                                                                 # Get and confirm the image from camera
-        m_led_img = userInterface.RequestConfirmedImage("Please put the camera as it would be during the LED sequence inspection. "
+        m_led_img = RequestConfirmedImage("Please put the camera as it would be during the LED sequence inspection. "
                                           "Press enter to take the image.",
                                           "Is the always lit up LED is clearly visible in the shown image? "
                                           "Press ESC or left click ON THE IMAGE to close the image and answer Y/N",
                                           "Was the always lit up LED clearly visible in the shown image? "
-                                          "Please answer Y/N", Display())
+                                          "Please answer Y/N")
                                                                 # Get the main LED coordinates
-        m_led_coords = userInterface.GetClickCoords(m_led_img, "In the shown image, left click on the always lit LED "
+        m_led_coords = GetClickCoords(m_led_img, "In the shown image, left click on the always lit LED "
                                                  "to calibrate its location and brightness "
-                                                 "and then Escape or Right click to turn off the image", Display())
+                                                 "and then Escape or Right click to turn off the image")
                                                                 # Get main LED colour data = m_led_data
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
         m_led_data = GetColourData(m_led_img, m_led_coords)
@@ -246,15 +291,15 @@ def PerformCalibration():
             continue                                            # If LED is not confirmed, start the loop again
         print "LED confirmed"                                   # For Debugging
                                                                 # Get the second LED coordinates
-        s_led_coords = userInterface.GetClickCoords(m_led_img, "Please click on the LED which is "
+        s_led_coords = GetClickCoords(m_led_img, "Please click on the LED which is "
                                                  "going to be blinking during the sequence and "
-                                                 "then Right click or ESC to exit", Display())
+                                                 "then Right click or ESC to exit")
         print m_led_coords, "are main LED coordinates"
         print s_led_coords, "are second LED coordinates"        # For debugging
         seq_time = GetTime()                                    # Get the time of the sequence in seconds
         dist_led = LedDistance(m_led_coords, s_led_coords)      # Get the maximum distance between LEDs
         scan_type = "unknown"                                   # Initialize scanning type variable
-        if (2.5*dist_led*dist_led)/5 > m_led_blob.area():       # Check if main LED is more than 1/5th of total rectangle
+        if (3*dist_led*3*dist_led)/5 > m_led_blob.area():       # Check if main LED is more than 1/5th of total rectangle
                                                                 # TODO modify 1/10
             scan_type = "number of blobs"                       # Scan based on number of blobs
         else:
@@ -274,7 +319,7 @@ def PerformCalibration():
             max_light = 0                                           # Initialise max light detection
             sequence_failed = False                                 # If not failed, then it is successful
             while(elapsed_time<seq_time):                           # Loop while sequence is not finished
-                live_img = cameraWrapper.GetImage()                               # Obtain live image
+                live_img = GetImage()                               # Obtain live image
                                                                     # Measure the illumination around LEDs
                 area_light = GetLight(live_img, m_led_coords, m_led_data, dist_led)
                 if area_light == "No blobs found":                  # Check whether No blobs were found
@@ -291,7 +336,7 @@ def PerformCalibration():
                 continue                                            # Return to top
                                                                     # Print the result for debugging
             print min_light, " is minimum light", max_light, "is maximum light"
-            if max_light - min_light < 10:
+            if max_light - min_light < 20:
                 scan_type = "number of blobs"
                                                                     # Notify user about calibration
             print "CALIBRATION DONE. Values to be stored: ", "max light:", max_light, "min light:", min_light,\
@@ -307,7 +352,7 @@ def PerformCalibration():
                 "main led data:", m_led_data, "distance between leds:", dist_led,\
                 "period of the sequence:", seq_time, "scan_type: ", scan_type
             values = {"m_led_coords": m_led_coords, "m_led_data": m_led_data, "dist_led": dist_led,"seq_time": seq_time,
-                  "scan type:": scan_type}
+                  "scan_type": scan_type}
             calibration_done = True                                 # Stop the looping
             return values
 
@@ -321,7 +366,7 @@ def SequenceScanning(cal_data):
     scan_done = False                                            # Initiate scanning loop
     while not scan_done:                                         # Perform while scanning is done
         led_sequence = []                                        # Create empty list to store sequence
-        live_img = cameraWrapper.GetImage()                                    # Get live camera image
+        live_img = GetImage()                                    # Get live camera image
         if MainLedDetection(live_img ,cal_data["m_led_coords"],cal_data["m_led_data"]) == "No blobs found":
                                                                  # Check if there is a main LED
             continue                                             # Start from the top of the loop
@@ -331,7 +376,7 @@ def SequenceScanning(cal_data):
         previous_state = "Unknown"                               # Initialise previous LED state variable
         elapsed_time = time.clock() - start                      # Obtain value for while loop to not show error
         while(elapsed_time<cal_data["seq_time"]):                # Loop while sequence is not finished
-            live_img = cameraWrapper.GetImage()                                # Obtain live image
+            live_img = GetImage()                                # Obtain live image
 
             if cal_data["scan_type"] == "illumination level":        # If scanning is performed based on illumination
                 light_level = GetLight(live_img, cal_data["m_led_coords"], cal_data["m_led_data"], cal_data["dist_led"])
@@ -385,7 +430,7 @@ def SequenceScanning(cal_data):
         print "END OF SCANNING. \n Sequence is:"                 # Nicely print the sequence
         for i in led_sequence:
             print i
-        again = userInterface.GetConfirmation("Scan again? Y/N")               # Ask if scan again
+        again = GetConfirmation("Scan again? Y/N")               # Ask if scan again
         if again:
             continue                                             # Start from the top loop
         return led_sequence                                      # TODO: Save it somewhere
