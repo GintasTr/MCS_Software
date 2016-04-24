@@ -70,6 +70,7 @@ def RequestConfirmedImage(RequestText, ConfirmationText1, ConfirmationText2):
 
 # Function for getting ValveCoords:
 def GetValveCoords(img, RequestText):
+    SQUARE_DIMENSIONS = 10
     print RequestText                                           # Ask user to click on display
     disp = Display()                                            # Create a display
     while disp.isNotDone():                                     # Loop until display is not needed anymore
@@ -78,7 +79,8 @@ def GetValveCoords(img, RequestText):
             mouse_coords = [disp.mouseX, disp.mouseY]           # Show coords on screen with modifiable square size
             text = "X:" + str(mouse_coords[0]) + " Y:" + str(mouse_coords[1])
             img.dl().text(text, (mouse_coords[0] + 10, mouse_coords[1] + 10), color=Color.RED)
-            img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]], color = Color.RED, dimensions = [20,20])
+            img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]], color = Color.RED,
+                                       dimensions = [SQUARE_DIMENSIONS,SQUARE_DIMENSIONS])
         if disp.mouseRight:                                     # If right clicked
             disp.done = True                                    # Turn off Display
         img.save(disp)                                          # Show the image on Display
@@ -101,13 +103,13 @@ def correct_blob_confirmation(handle, img):
 
 # Function to detect the main LED:
 def ValveDetection(img, coords, data):
-    Std_constant = 5                                            # Describes how many std dev of value to include
+    Std_constant = 3                                            # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 100                                       # Specify blobs colour distance threshold
+    blobs_threshold = 200                                       # Specify blobs colour distance threshold
     blobs_min_size =  1000                                       # Specify minimum blobs size
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
@@ -115,12 +117,13 @@ def ValveDetection(img, coords, data):
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     filtered = filtered.morphClose()                             # Perform morphOps TODO: look for better options
+    #show_image_until_pressed(filtered)
     all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
     if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
+        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
         return "No blobs found"
-    m_valve = all_blobs[-1]                                       # m_valve is the closes blob to the click
+    m_valve = all_blobs[0]                                       # m_valve is the closes blob to the click
     return m_valve
 
 
@@ -131,19 +134,25 @@ def GetColourData(img, coords):
     cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
                        coords[1], CROP_SIZE,
                        CROP_SIZE, centered= True)
-    cropped = cropped.getNumpyCv2()                             # Convert image to numpy array compatible with openCV
-    cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)          # Convert image to HSV colour scheme with openCV
-    meanHue = np.mean(cropped[:,:,0])                           # Slice the NumPy array to get the mean Hue
-    meanSat = np.mean(cropped[:,:,1])                           # Slice the NumPy array to get the mean Sat
-    stdSat = np.std(cropped[:,:,1])                             # Slice the NumPy array to get the std Sat
-    minSat = np.min(cropped[:,:,1])                             # Slice the NumPy array to get the min Sat
-    meanValue = np.mean(cropped[:,:,2])                         # Slice the NumPy array to get the mean Brightness
+    cropped_num = cropped.getNumpyCv2()                             # Convert image to numpy array compatible with openCV
+    cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)          # Convert image to HSV colour scheme with openCV
+    meanHue = np.mean(cropped_num[:,:,0])                           # Slice the NumPy array to get the mean Hue
+    meanSat = np.mean(cropped_num[:,:,1])                           # Slice the NumPy array to get the mean Sat
+    stdSat = np.std(cropped_num[:,:,1])                             # Slice the NumPy array to get the std Sat
+    minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
+    meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
     # print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
     # print meanSat, "- mean Sat"
     # print stdSat, "- std Sat"
     # print minSat, "- min Sat"
     # print meanValue, " - min Val"
     # raw_input("check results")                                  # FOR DEBUGGING
+
+    hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
+    if hue_hist[0] and hue_hist[1] and hue_hist[2] and hue_hist[-1] and hue_hist[-2] and hue_hist[-3] != 0:
+        max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location
+        print "Object is red, then average hue is: ", max_index     # Report issue
+        meanHue = max_index                                         # Re-write Hue value
 
     hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     return hsv_data

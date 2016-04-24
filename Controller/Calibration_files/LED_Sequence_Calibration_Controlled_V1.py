@@ -1,12 +1,20 @@
 from SimpleCV import *
 import cv2
 
-
 # prepares, selects the camera
 def setup():
     global cam
     cam = Camera()
     time.sleep(1)
+
+
+# Function to get the image from the camera
+def GetImage():
+    img = cam.getImage()                                            # Get image from camera
+    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    return img
+
 
 # Shows the image until the button is pressed
 def show_image_until_pressed(img):
@@ -17,17 +25,10 @@ def show_image_until_pressed(img):
         img.show()                                          # Show the image on Display
     Display().quit()                                        # Exit the display so it does not go to "Not responding"
 
+
 # Briefly flashes the image
 def show_image_briefly(img):
     img.show()                                              # Show the image on Display
-
-
-# Function to get the image from camera
-def GetImage():
-    img = cam.getImage()                                            # Get image from camera
-    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
-    return img
 
 
 # Function to get user confirmation about the image
@@ -90,7 +91,7 @@ def MainLedDetection(img, coords, data):
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_max_size = 7000                                      # Specify max size of blob
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
-    filtered = img.hueDistance(color = 170,           #data["avg_hue"],
+    filtered = img.hueDistance(color = data["avg_hue"],
                                minvalue = min_brightness)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     filtered = filtered.morphOpen()                             # Perform morphOps
@@ -230,7 +231,7 @@ def GetLight(img, coords, hsv_data, dist):
 
 
 def BlobsNumber(img, coords, hsv_data, dist):
-    dist_scalar = 3         #3                                           # Margin of distance to include both LEDs
+    dist_scalar = 3                                           # Margin of distance to include both LEDs
     crop_length = int(round(dist_scalar*dist))
     main_blob = MainLedDetection(img,coords,hsv_data)           # Get main led blob. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
@@ -242,7 +243,7 @@ def BlobsNumber(img, coords, hsv_data, dist):
                         crop_length, centered=True)
     cropped = cropped.toGray()                                  # Convert to Grayscale Image
     cropped_num = cropped.getGrayNumpy()                        # Convert to NumPy array
-    bin_thresh = int(np.max(cropped_num)+ np.mean(cropped_num))/1.7   # Set the threshold as half of the max to average
+    bin_thresh = (np.max(cropped_num)+np.mean(cropped_num))/2   # Set the threshold as half of the max to average
     cropped = cropped.binarize(thresh=bin_thresh)               # Binarize the cropped image
     cropped = cropped.invert()                                  # Invert so that light areas are white
     cropped = cropped.morphOpen()
@@ -353,101 +354,55 @@ def PerformCalibration():
                 "period of the sequence:", seq_time, "scan_type: ", scan_type
             values = {"m_led_coords": m_led_coords, "m_led_data": m_led_data, "dist_led": dist_led,"seq_time": seq_time,
                   "scan_type": scan_type}
+            values["max_light"] = 0
+            values["min_light"] = 0                                 # Fill in not-needed variables
             calibration_done = True                                 # Stop the looping
             return values
 
 
-# Function to perform the main sequence scanning
-# Reminder: cal_data = {"max_light": max_light, "min_light": min_light,"m_led_coords": m_led_coords,
-                      #"m_led_data": m_led_data, "dist_led": dist_led,"seq_time": seq_time, "scan_type": scan_type}
-def SequenceScanning(cal_data):
-    if cal_data["scan_type"] == "illumination level":            # Define the threshold between ON/OFF LED
-        light_threshold = (cal_data["min_light"]+cal_data["max_light"])/2
-    scan_done = False                                            # Initiate scanning loop
-    while not scan_done:                                         # Perform while scanning is done
-        led_sequence = []                                        # Create empty list to store sequence
-        live_img = GetImage()                                    # Get live camera image
-        if MainLedDetection(live_img ,cal_data["m_led_coords"],cal_data["m_led_data"]) == "No blobs found":
-                                                                 # Check if there is a main LED
-            continue                                             # Start from the top of the loop
-        print "LED found, starting sequence scanning"            # Notify user about sequence scanning
-        start = time.clock()                                     # Mark the start of sequence
-        elapsed_old = 0                                          # Initialise for delta T acquisition
-        previous_state = "Unknown"                               # Initialise previous LED state variable
-        elapsed_time = time.clock() - start                      # Obtain value for while loop to not show error
-        while(elapsed_time<cal_data["seq_time"]):                # Loop while sequence is not finished
-            live_img = GetImage()                                # Obtain live image
-
-            if cal_data["scan_type"] == "illumination level":        # If scanning is performed based on illumination
-                light_level = GetLight(live_img, cal_data["m_led_coords"], cal_data["m_led_data"], cal_data["dist_led"])
-                if light_level == "No blobs found":                  # If no blobs found
-                    elapsed_time = (time.clock() - start)            # Get elapsed time for the list
-                    led_sequence.append("No blobs found at %.4f" % round(elapsed_time,4))
-                    print "No blobs found at %.4f" % round(elapsed_time,4)
-                    continue
-                if light_level > light_threshold:                    # Check if LED is ON of OFF
-                    led_state = "ON"
-                else:
-                    led_state = "OFF"
-                if previous_state == led_state:                      # If current state is the same as previous, do nothing
-                    elapsed_time = (time.clock() - start)            # Update elapsed time for the loop
-                    continue                                         # Loop again
-                previous_state = led_state                           # Update the previous state
-                elapsed_time = (time.clock() - start)                # Calculate elapsed time
-                delta_t = elapsed_time - elapsed_old                 # Calculate Delta T
-                elapsed_old = elapsed_time                           # Update Old time for delta T calculations
-                                                                     # Add new values to sequence list
-                led_sequence.append("LED state: %s at %.4f Delta T from last state: %.4f" %
-                                    (led_state, round(elapsed_time,4), round(delta_t,4)))
-                                                                     # Print new values for debugging
-                print "LED state: %s at %.4f . Delta T from last state: %.4f" % (led_state, round(elapsed_time,4), round(delta_t,4))
-
-            if cal_data["scan_type"] == "number of blobs":           # If scanning is performed based on number of blobs
-                number_of_blobs = BlobsNumber(live_img, cal_data["m_led_coords"], cal_data["m_led_data"], cal_data["dist_led"])
-                if number_of_blobs == "No blobs found":              # If no blobs were found
-                    elapsed_time = (time.clock() - start)            # Get elapsed time for the list
-                    led_sequence.append("No blobs found at %.4f" % round(elapsed_time,4))
-                    print "No blobs found at %.4f" % round(elapsed_time,4)
-                    continue                                         # Start from the top of the loop
-
-                if number_of_blobs > 1:                              # Check if more than 1 LED is on
-                    led_state = "ON"
-                else:
-                    led_state = "OFF"
-                if previous_state == led_state:                      # If current state is the same as previous, do nothing
-                    elapsed_time = (time.clock() - start)            # Update elapsed time for the loop
-                    continue                                         # Loop again
-                previous_state = led_state                           # Update the previous state
-                elapsed_time = (time.clock() - start)                # Calculate elapsed time
-                delta_t = elapsed_time - elapsed_old                 # Calculate Delta T
-                elapsed_old = elapsed_time                           # Update Old time for delta T calculations
-                                                                     # Add new values to sequence list
-                led_sequence.append("LED state: %s at %.4f Delta T from last state: %.4f" %
-                                    (led_state, round(elapsed_time,4), round(delta_t,4)))
-                                                                     # Print new values for debugging
-                print "LED state: %s at %.4f . Delta T from last state: %.4f" % (led_state, round(elapsed_time,4), round(delta_t,4))
-                                                                 # Notify user about end of scanning
-        print "END OF SCANNING. \n Sequence is:"                 # Nicely print the sequence
-        for i in led_sequence:
-            print i
-        again = GetConfirmation("Scan again? Y/N")               # Ask if scan again
-        if again:
-            continue                                             # Start from the top loop
-        return led_sequence                                      # TODO: Save it somewhere
-                          # TODO: Save it somewhere
+# Function to write calibration results to file
+def store_results(FILE_NAME, cal_data):
+    with open(FILE_NAME, "w") as storage:
+        storage.write("""m_led_coords: %s
+m_led_data: %s
+dist_led: %s
+seq_time: %s
+scan_type: %s
+max_light: %s
+min_light: %s"""
+                  % (cal_data["m_led_coords"],
+                    cal_data["m_led_data"],
+                    cal_data["dist_led"],
+                    cal_data["seq_time"],
+                    cal_data["scan_type"],
+                    cal_data["max_light"],
+                    cal_data["min_light"]))
+    print ("""m_led_coords: %s
+m_led_data: %s
+dist_led: %s
+seq_time: %s
+scan_type: %s
+max_light: %s
+min_light: %s"""
+                  % (cal_data["m_led_coords"],
+                    cal_data["m_led_data"],
+                    cal_data["dist_led"],
+                    cal_data["seq_time"],
+                    cal_data["scan_type"],
+                    cal_data["max_light"],
+                    cal_data["min_light"]))
 
 
-# Main software:
-# Initialisation:
+# MAIN SOFTWARE:
+def do_calibration_procedure():
+    setup()                                                           # Perform camera setup
 
-setup()                                                         # Perform camera setup
-# TODO: Check for calibration data. If found, ask whether do calibration again. If not, go to calibration.
+    calibration_data = PerformCalibration()                           # Perform calibration procedure
 
-calibration_data=PerformCalibration()                           # Perform calibration procedure
+    store_results("LED_sequence_calibration_data.txt", calibration_data)
 
-raw_input("PRESS ENTER TO START MAIN SCANNING")
-while True:
-    led_sequence = SequenceScanning(calibration_data)                          # Start sequence scanning based on calibration data
-    # Reminder: calibration_data = {"max_light": max_light, "min_light:": min_light,"m_led_coords": m_led_coords,
-    # "m_led_data": m_led_data, "dist_led": dist_led,"seq_time": seq_time}
-    raw_input("STOP")
+
+
+# If called by itself, perform calibration
+if __name__ == '__main__':
+    do_calibration_procedure()

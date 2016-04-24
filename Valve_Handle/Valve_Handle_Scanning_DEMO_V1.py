@@ -8,6 +8,15 @@ def setup():
     cam = Camera()
     time.sleep(1)
 
+# Shows the image until the button is pressed
+def show_image_until_pressed(img):
+    disp = Display()                                        # Create a display
+    while disp.isNotDone():                                 # Loop until display is not needed anymore
+        if disp.mouseLeft:                                  # Check if left click was used on display
+            disp.done = True                                # Turn off Display
+        img.show()                                          # Show the image on Display
+    Display().quit()                                        # Exit the display so it does not go to "Not responding"
+
 
 # Function to get the image from the camera
 def GetImage():
@@ -19,13 +28,13 @@ def GetImage():
 
 # Function to detect valve Handle:
 def HandleDetection(img, coords, data):
-    Std_constant = 5                                            # Describes how many std dev of value to include
+    Std_constant = 4                                            # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 100                                       # Specify blobs colour distance threshold
+    blobs_threshold = 200                                       # Specify blobs colour distance threshold
     blobs_min_size =  1000                                       # Specify minimum blobs size
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
@@ -33,6 +42,7 @@ def HandleDetection(img, coords, data):
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     filtered = filtered.morphClose()                             # Perform morphOps TODO: look for better options
+    #show_image_until_pressed(filtered)
     all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
     if all_blobs > 1:                                           # If more than 1 blob found
         all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
@@ -66,17 +76,44 @@ def read_calibration_data():
 
 
 # Function to scan the image
-def scanning_procedure(Handle_coords, colour_data):
-    img = GetImage()                                           # Get the image
-    Handle = HandleDetection(img, Handle_coords, colour_data)  # Try to detect the handle
-    return Handle                                              # Return the result
+def scanning_procedure(Handle_coords, colour_data, closed_angle, open_angle):
+    while True:
+        img = GetImage()                                           # Get the image
+        Handle = HandleDetection(img, Handle_coords, colour_data)  # Try to detect the handle
 
+        middle_angle = abs(closed_angle-open_angle)/2           # Find the middle distance between two angles
+        if Handle == "No blobs found":                          # If no blobs were found
+            state = "Not found"
+            distance_from_closed = 0.0
+            text2 = "Valve is: %s" % state
+            #return "Not found"
+            img.dl().text(text2, (10, 10),color=Color.RED) #FOR FEEDBACK ONLY
+            img.show()  #FOR FEEDBACK ONLY
+            continue
+        if abs(Handle.angle() - closed_angle) > middle_angle:   # Check if handle is open or closed
+            state = "Open"
+            distance_from_closed = abs(Handle.angle() - closed_angle)
+            #return "Open"
+        else:
+            state = "Closed"
+            distance_from_closed = abs(Handle.angle() - closed_angle)
+            #return "Closed"
+
+        text1 = "Handle angle: %.0f from closed." % distance_from_closed
+        text2 = "Valve is: %s" % (state)
+        Handle.drawMinRect(layer=img.dl(), color = Color.RED, width = 3)
+        img.dl().setFontSize(25)
+        img.dl().text(text1, (10, 10),
+                      color=Color.RED) #FOR FEEDBACK ONLY
+        img.dl().text(text2, (Handle.bottomLeftCorner()[0] + 10, Handle.bottomLeftCorner()[1] + 10 ),
+                      color=Color.RED) #FOR FEEDBACK ONLY
+        img.show()  #FOR FEEDBACK ONLY
 
 # Function to process the results from images
 def process_a_result(handle, closed_angle, open_angle):
     middle_angle = abs(closed_angle-open_angle)/2           # Find the middle distance between two angles
     if handle == "No blobs found":                          # If no blobs were found
-        return "No blobs found"
+        return "Not found"
     if abs(handle.angle() - closed_angle) > middle_angle:   # Check if handle is open or closed
         return "Open"
     else:
@@ -107,7 +144,7 @@ def calculate_average(results):
 
 setup()
 
-n = 10                              # NUMBER OF SAMPLE IMAGES
+n = 1                              # NUMBER OF SAMPLE IMAGES
 results = range(n)                  # Create a list of results
 
 
@@ -135,7 +172,8 @@ colour_data = {"avg_hue": closed_average_hue,
 
 
 for i in range(0, len(results)):
-    result = scanning_procedure(Handle_coords,colour_data)
+    result = scanning_procedure(Handle_coords,colour_data,
+                                calibration_data['closed_angle_stored'], calibration_data['open_angle_stored'])
     processed_result = process_a_result(result, closed_angle_stored, open_angle_stored)
     results[i] = processed_result
     print results[i]

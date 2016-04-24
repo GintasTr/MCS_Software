@@ -1,12 +1,13 @@
 from SimpleCV import *
 import cv2
+from Controller import LED_Sequence_Controlled_V5
 
 
 # prepares, selects the camera
 def setup():
     global cam
     cam = Camera()
-    time.sleep(1)
+    time.sleep(0.2)
 
 
 # Function to get the image from camera
@@ -17,18 +18,31 @@ def GetImage():
     return img
 
 
+# Briefly flashes the image
+def show_image_briefly(img):
+    img.show()                                              # Show the image on Display
 
-# Function for getting ValveCoords:
-def GetValveCoords(img, RequestText):
-    print RequestText                                           # Ask user to click on display
+
+# Shows the image until the button is pressed
+def show_image_until_pressed(img):
+    disp = Display()                                        # Create a display
+    while disp.isNotDone():                                 # Loop until display is not needed anymore
+        if disp.mouseLeft:                                  # Check if left click was used on display
+            disp.done = True                                # Turn off Display
+        img.show()                                          # Show the image on Display
+    Display().quit()                                        # Exit the display so it does not go to "Not responding"
+
+
+# Debugging function: Shows the pixel value when clicked on the screen:
+def debug_pixel_value(img):
     disp = Display()                                            # Create a display
     while disp.isNotDone():                                     # Loop until display is not needed anymore
         img.clearLayers()                                       # Clear old drawings
         if disp.mouseLeft:
             mouse_coords = [disp.mouseX, disp.mouseY]           # Show coords on screen with modifiable square size
-            text = "X:" + str(mouse_coords[0]) + " Y:" + str(mouse_coords[1])
-            img.dl().text(text, (mouse_coords[0] + 10, mouse_coords[1] + 10), color=Color.RED)
-            img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]], color = Color.RED, dimensions = [20,20])
+            text = str(img.getGrayPixel(mouse_coords[0],mouse_coords[1]))
+            img.dl().text(text, (mouse_coords[0], mouse_coords[1]), color=Color.RED)
+            img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]], color = Color.RED, dimensions = [2,2])
         if disp.mouseRight:                                     # If right clicked
             disp.done = True                                    # Turn off Display
         img.save(disp)                                          # Show the image on Display
@@ -36,88 +50,32 @@ def GetValveCoords(img, RequestText):
     return mouse_coords                                         # Return mouseX and mouseY as mouse_coords[0] and [1]
 
 
-# Function to detect the main LED:
-def ValveDetection(img, coords, data):
-    Std_constant = 5                                            # Describes how many std dev of value to include
-    min_value = 30                                              # Minimal illumination threshold
-                                                                # Derive minimum saturation. As a reminder: hsv_data =
-                                                                # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
-    img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 100                                       # Specify blobs colour distance threshold
-    blobs_min_size =  1000                                       # Specify minimum blobs size
-                                                                # Apply filters to the image TODO: calibrate or change the filtering
-    filtered = img.hueDistance(color = data["avg_hue"],
-                               minsaturation = minsaturation,
-                               minvalue = min_value)
-    filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    filtered = filtered.morphClose()                             # Perform morphOps TODO: look for better options
-    # filtered = filtered.dilate(1) #TO BE TESTED               # Possible morphOps OPEN??
-    # Filtered = filtered.erode(1)
-    global debugging
-    all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
-    if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
-    elif all_blobs < 1:                                         # If none blobs found
-        # print "No blobs found"                                  # Print and return that no blobs were found. Not needed
-        return "No blobs found"
-    debugging = filtered
-    m_led = all_blobs[-1]                                       # m_led is the closes blob to the click
-    return m_led
 
+setup()
+while True:
+    img = Image("CROPPED1.jpg")
+    show_image_until_pressed(img)
 
-# Function to get the colour data of small area around certain point
-def GetColourData(img, coords):
-    crop_size = 10                                              # Area around the point to be evaluated (square width)
-    cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
-                       coords[1], crop_size,
-                       crop_size, centered= True)
-    cropped.save("cropped.jpg")
-    cropped = cropped.getNumpyCv2()                             # Convert image to numpy array compatible with openCV
-    cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)          # Convert image to HSV colour scheme with openCV
-    meanHue = np.mean(cropped[:,:,0])                           # Slice the NumPy array to get the mean Hue
-    meanSat = np.mean(cropped[:,:,1])                           # Slice the NumPy array to get the mean Sat
-    stdSat = np.std(cropped[:,:,1])                             # Slice the NumPy array to get the std Sat
-    minSat = np.min(cropped[:,:,1])                             # Slice the NumPy array to get the min Sat
-    meanValue = np.mean(cropped[:,:,2])                         # Slice the NumPy array to get the mean Brightness
-    # print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
-    # print meanSat, "- mean Sat"
-    # print stdSat, "- std Sat"
-    # print minSat, "- min Sat"
-    # print meanValue, " - min Val"
-    # raw_input("check results")                                  # FOR DEBUGGING
+    img_num = img.getNumpyCv2()                             # Convert image to numpy array compatible with openCV
+    img_num = cv2.cvtColor(img_num, cv2.COLOR_BGR2HSV)          # Convert image to HSV colour scheme with openCV
+    meanHue = np.mean(img_num[:,:,0])                           # Slice the NumPy array to get the mean Hue
+    meanSat = np.mean(img_num[:,:,1])                           # Slice the NumPy array to get the mean Sat
+    stdSat = np.std(img_num[:,:,1])                             # Slice the NumPy array to get the std Sat
+    minSat = np.min(img_num[:,:,1])                             # Slice the NumPy array to get the min Sat
+    meanValue = np.mean(img_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
 
-    hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    return hsv_data                                             # Return the obtained values
+    print meanHue, "- mean Hue"                             # Print the obtained values for debugging
+    print meanSat, "- mean Sat"
+    print meanValue, " - min Val"
 
+    hue_hist = img.hueHistogram()
+    print hue_hist, "one", hue_hist[0], "two", hue_hist[1],"last", hue_hist[-1],"before last", hue_hist[-2]
 
-# Main software:
-# Initialisation:
+    if hue_hist[0] and hue_hist[1] and hue_hist[2] and hue_hist[-1] and hue_hist[-2] and hue_hist[-3] != 0:
+        max_index = hue_hist.argmax()
+        print "AvgHue is then: ", max_index
+        meanHue = max_index
 
-setup()                                                         # Perform camera setup
-# TODO: Check for calibration data. If found, ask whether do calibration again. If not, go to calibration.
-
-img = GetImage()
-coords = GetValveCoords(img, "Click on the Handle")
-colour_data = GetColourData(img, coords)
-disp = Display()
-while disp.isNotDone():
-    img = GetImage()
-    handle = ValveDetection(img, coords, colour_data)
-    if handle == "No blobs found":
-        img.dl().text(handle, (10, 10), color=Color.RED)
-        img.show()
-        continue
-    handle.drawMinRect(layer=img.dl(), color = Color.RED, width = 3)
-    Width_by_Height = str(handle.minRectWidth()/handle.minRectHeight())
-    Minimum_Width = str(handle.minRectWidth())
-    Minimum_Height = str(handle.minRectHeight())
-    Aspect_ratio = str(handle.aspectRatio())
-
-    img.dl().text(("Width_by_Height" + Width_by_Height), [10,10], color=Color.RED)
-    img.dl().text(("Minimum_Width" + Minimum_Width), [10,30], color=Color.RED)
-    img.dl().text(("Minimum_Height" + Minimum_Height), [10,60], color=Color.RED)
-    img.dl().text(("Aspect_ratio" + Aspect_ratio), [10,80], color=Color.RED)
-
-    img.show()                                          # Show the image on Display
-disp.quit()
+    img2 = img.hueDistance(color = meanHue, minsaturation = 2, minvalue = 20)
+    img2 = img2.invert()
+    debug_pixel_value(img2)

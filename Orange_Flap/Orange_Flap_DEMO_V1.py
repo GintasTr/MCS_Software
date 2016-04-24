@@ -23,6 +23,23 @@ def setup():
     time.sleep(1)
 
 
+
+# Shows the image until the button is pressed
+def show_image_until_pressed(img):
+    disp = Display()                                        # Create a display
+    while disp.isNotDone():                                 # Loop until display is not needed anymore
+        if disp.mouseLeft:                                  # Check if left click was used on display
+            disp.done = True                                # Turn off Display
+        img.show()                                          # Show the image on Display
+    Display().quit()                                        # Exit the display so it does not go to "Not responding"
+
+
+# Briefly flashes the image
+def show_image_briefly(img):
+    img.show()                                              # Show the image on Display
+
+
+
 # for multiple windows OpenCV (includes NumpyConversion)
 def ShowWindow(name, image):
     converted = image.getNumpyCv2()
@@ -72,7 +89,7 @@ def AcquireFlatImage():  # Acquire flat flap image for calibration
             "Point camera the way it is going to be during the orange flap examination, "
             "put the flap flat on the sub module and press Enter to take the image")
         flat_image = GetImage()  # Get image of the flat flap
-        if IsFlapClear(flat_image): # Check if flat image is correct
+        if True: #IsFlapClear(flat_image): # Check if flat image is correct
             flat_image_done = True
         else:
             None
@@ -109,22 +126,28 @@ def get_calibration_coordinates(flatImg):
     return mouse_coords
 
 def ColorAveraging(flat_image, Calibration_coords):
-    crop_length = 20 #Adjust cropping area (x,y,w,h)
-    cropped = flat_image.crop(Calibration_coords[0],
-                              Calibration_coords[1], crop_length,
-                              crop_length, centered= True)
-    cropped_num = cropped.getNumpyCv2()
-    cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)
-    meanHue = np.mean(cropped_num[:,:,0])
-    meanSat = np.mean(cropped_num[:,:,1])
-    stdSat = np.std(cropped_num[:,:,1])
-    minSat = np.min(cropped_num[:,:,1])
-    meanValue = np.mean(cropped_num[:,:,2])
-    print meanHue, "- mean Hue"
-    print meanSat, "- mean Sat"
-    print stdSat, "- std Sat"
-    print minSat, "- min Sat"
-    #raw_input("check results")   --FOR DEBUGGING
+
+# Function to get the colour data of small area around certain point
+    BLOB_BRIGHTNESS_LIMIT = 230
+    #CROPPING_AROUND_BLOB_SCALAR = 3
+    CROP_SIZE = 20                                              # Area around the point to be evaluated (square width)
+    cropped = flat_image.crop(Calibration_coords[0],            # Adjust cropping area (x,y,w,h)
+                       Calibration_coords[1], CROP_SIZE,
+                       CROP_SIZE, centered= True)
+
+    cropped_num = cropped.getNumpyCv2()                         # Convert image to numpy array compatible with openCV
+    cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)  # Convert image to HSV colour scheme with openCV
+
+    meanHue = np.mean(cropped_num[:,:,0])                           # Slice the NumPy array to get the mean Hue
+    meanSat = np.mean(cropped_num[:,:,1])                           # Slice the NumPy array to get the mean Sat
+    std_sat = np.std(cropped_num[:,:,1])                             # Slice the NumPy array to get the std Sat
+    minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
+    meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
+    print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
+    # print meanSat, "- mean Sat"
+    # print std_sat, "- std Sat"
+    # print minSat, "- min Sat"
+    print meanValue, " - min Val"
 
     hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
     if hue_hist[0] and hue_hist[1] and hue_hist[2] and hue_hist[-1] and hue_hist[-2] and hue_hist[-3] != 0:
@@ -132,15 +155,18 @@ def ColorAveraging(flat_image, Calibration_coords):
         print "Object is red, then average hue is: ", max_index     # Report issue
         meanHue = max_index                                         # Re-write Hue value
 
-    values = {"AvHue": meanHue, "AvSat": meanSat, "StdSat": stdSat}
-    return values
+    hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": std_sat}
+    return hsv_data                                             # Return the obtained values
+
+
+
 
 def apply_filter(Calibration_values, img):
     Std_constant = 6 #TODO how much of illumination?
     min_value = 30 #minimal illumination of the object
-    minsaturation = (Calibration_values["AvSat"]/2)
+    minsaturation = (Calibration_values["avg_sat"]/2)
     img = img.toHSV()
-    Filtered = img.hueDistance(color = Calibration_values["AvHue"],
+    Filtered = img.hueDistance(color = Calibration_values["avg_hue"],
                                minsaturation = minsaturation
                                #minvalue = min_value
                                )
@@ -158,24 +184,25 @@ def Flat_Calibration():     #TODO rearrange functions to avoid function-in funct
     flat_calibration_done = False
     while (not flat_calibration_done):  # Repeat until flat flap calibration is performed correctly
         flat_image = AcquireFlatImage()
-        raw_input("Got the flat_image, now perform calibration")
+        #raw_input("Got the flat_image, now perform calibration")
         Calibration_coords = get_calibration_coordinates(flat_image)
         print "Approximate coordinates of flap: ", Calibration_coords
         Calibration_values = ColorAveraging(flat_image, Calibration_coords)
         filteredImage = apply_filter(Calibration_values, flat_image)
         #TODO replace this here and everywhere else with function findAndSortBlobs.
         possible_flaps = filteredImage.findBlobs(threshval = blobs_threshold_flat, minsize=blobs_min_size_flat)   #CAN ADD SIZES AND STUFF
-        if possible_flaps > 1:
+        if possible_flaps > 1 or possible_flaps == 1:
             possible_flaps = possible_flaps.sortDistance(point =(Calibration_coords[0], Calibration_coords[1]))
             for i in range(0, len(possible_flaps)):
                 filteredImage.dl().rectangle2pts(possible_flaps[i].topLeftCorner(),
                                                  possible_flaps[i].bottomRightCorner(),Color.GREEN, width = 5)
                 filteredImage.dl().text("%s" %i, (possible_flaps[i].topLeftCorner()), color=Color.RED)
-                filteredImage.dl().circle(center = (Calibration_coords[0], Calibration_coords[1]), radius = 2,
+                filteredImage.dl().circle(center = (Calibration_coords[0], Calibration_coords[1]), radius = 4,
                                           color = Color.RED, width = 3, filled = True)
         elif possible_flaps < 1:
             print "No possible flaps were found, starting calibration again"
             continue
+        show_image_until_pressed(filteredImage)
         flap = possible_flaps[0]
         flat_image.dl().rectangle2pts(flap.topLeftCorner(), flap.bottomRightCorner(),Color.RED, width = 5)
             #closest flap
@@ -198,18 +225,18 @@ def Flat_Calibration():     #TODO rearrange functions to avoid function-in funct
             else:
                 print "Incorrect value entered."
     FlapWHRatio = flap.width() / flap.height()
-    values = {"AvHue": Calibration_values["AvHue"], "AvSat": Calibration_values["AvSat"],
-              "StdSat": Calibration_values["StdSat"], "FlatWHRatio": FlapWHRatio,
+    values = {"avg_hue": Calibration_values["avg_hue"], "avg_sat": Calibration_values["avg_sat"],
+              "std_sat": Calibration_values["std_sat"], "FlatWHRatio": FlapWHRatio,
               "mouseX": Calibration_coords[0], "mouseY": Calibration_coords[1]}
     return values
 
-def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
+def Slope_Calibration(avg_hue,avg_sat,std_sat,mouseX,mouseY):
     blobs_threshold_slope = 100
     blobs_min_size_slope = 1000
     slope_calibration_done = False
     while (not slope_calibration_done):
         slope_image = AcquireSlopeImage()
-        filtered_image = apply_filter({"AvHue": AvHue, "AvSat": AvSat, "StdSat": StdSat}, slope_image)
+        filtered_image = apply_filter({"avg_hue": avg_hue, "avg_sat": avg_sat, "std_sat": std_sat}, slope_image)
         possible_flaps = filtered_image.findBlobs(threshval = blobs_threshold_slope, minsize=blobs_min_size_slope)   #CAN ADD SIZES AND STUFF
         if possible_flaps > 1:
             possible_flaps = possible_flaps.sortDistance(point =(mouseX, mouseY))
@@ -256,7 +283,7 @@ blobs_threshold_main = 130   #thresholds for calibration blob detection and main
 blobs_min_size_main = 1000
 
 flat_data = Flat_Calibration()
-slope_data = Slope_Calibration(flat_data["AvHue"], flat_data["AvSat"], flat_data["StdSat"],
+slope_data = Slope_Calibration(flat_data["avg_hue"], flat_data["avg_sat"], flat_data["std_sat"],
                                 flat_data["mouseX"], flat_data["mouseY"])
 
 ## Main loop:
@@ -272,15 +299,22 @@ while True:
     elif possible_flaps < 1:
         print "No flaps found"
         continue
-    possible_flaps.draw(width=3)
-    filtered.show()
     flap = possible_flaps[0]
-    #Img.dl().rectangle2pts(flap.topLeftCorner(), flap.bottomRightCorner(),Color.RED, width = 5) #FOR FEEDBACK ONLY
-    #Img.show()  #FOR FEEDBACK ONLY
+
     detectedRatio = flap.width()/flap.height()
     if detectedRatio > (flat_data["FlatWHRatio"]+2*slope_data) / 3:
         print "Flap is in slope position"
+        position = "slope"
     elif detectedRatio <= (flat_data["FlatWHRatio"]+2*slope_data) / 3:
         print "Flap is in flat position"
+        position = "flat"
     else:
+        position = "unknown"
         print "Detected incorrectly"
+
+    text = "Flap position is: " + position
+    Img.dl().rectangle2pts(flap.topLeftCorner(),
+                        flap.bottomRightCorner(),Color.RED, width = 5)
+    Img.dl().text(text, (flap.bottomLeftCorner()[0] + 10, flap.bottomLeftCorner()[1] + 10 ),
+                  color=Color.RED) #FOR FEEDBACK ONLY
+    Img.show()  #FOR FEEDBACK ONLY

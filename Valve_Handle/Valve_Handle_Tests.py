@@ -57,7 +57,7 @@ def ValveDetection(img, coords, data):
     global debugging
     all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
     if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
+        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:                                         # If none blobs found
         # print "No blobs found"                                  # Print and return that no blobs were found. Not needed
         return "No blobs found"
