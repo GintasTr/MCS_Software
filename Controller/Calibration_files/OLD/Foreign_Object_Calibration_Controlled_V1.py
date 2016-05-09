@@ -68,9 +68,9 @@ def RequestConfirmedImage(RequestText, ConfirmationText1, ConfirmationText2):
     return img
 
 
-# Function for getting ValveCoords:
-def GetValveCoords(img, RequestText):
-    SQUARE_DIMENSIONS = 10
+# Function for getting objectCoords:
+def getObjectCoords(img, RequestText):
+    mouse_rectangle_dimensions = 10
     print RequestText                                           # Ask user to click on display
     disp = Display()                                            # Create a display
     while disp.isNotDone():                                     # Loop until display is not needed anymore
@@ -79,8 +79,9 @@ def GetValveCoords(img, RequestText):
             mouse_coords = [disp.mouseX, disp.mouseY]           # Show coords on screen with modifiable square size
             text = "X:" + str(mouse_coords[0]) + " Y:" + str(mouse_coords[1])
             img.dl().text(text, (mouse_coords[0] + 10, mouse_coords[1] + 10), color=Color.RED)
-            img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]], color = Color.RED,
-                                       dimensions = [SQUARE_DIMENSIONS,SQUARE_DIMENSIONS])
+            img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]],
+                                       color = Color.RED,
+                                       dimensions = [mouse_rectangle_dimensions,mouse_rectangle_dimensions])
         if disp.mouseRight:                                     # If right clicked
             disp.done = True                                    # Turn off Display
         img.save(disp)                                          # Show the image on Display
@@ -91,39 +92,38 @@ def GetValveCoords(img, RequestText):
 # Function to ensure that correct blob was found
 def correct_blob_confirmation(handle, img):
     TEXT_WHILE_IMAGE = "Look at the image and close it with mouse click or escape"
-    QUESTION_TO_ASK = "Does the valve handle have red square around it in the picture? Y/N"
-
-    test_img = img
+    QUESTION_TO_ASK = "Does the foreign object have red square around it in the picture? Y/N"
+    test_img = img                                               # Show the image
     handle.drawMinRect(layer=test_img.dl(), color = Color.RED, width = 3)
-    print TEXT_WHILE_IMAGE
-    show_image_until_pressed(test_img)
-    correct_blob = GetConfirmation(QUESTION_TO_ASK)
+                                                                 # Draw a rectangle around the found blob
+    print TEXT_WHILE_IMAGE                                       # Print a message
+    show_image_until_pressed(test_img)                           # Show image until pressed
+    correct_blob = GetConfirmation(QUESTION_TO_ASK)              # Ask for confirmation
     return correct_blob
 
 
-# Function to detect the main LED:
-def ValveDetection(img, coords, data):
-    Std_constant = 3                                            # Describes how many std dev of value to include
+# Function to detect the foreign object for the first time:
+def InitialObjectDetection(img, coords, data):
+    Std_constant = 5                                            # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 200                                       # Specify blobs colour distance threshold
-    blobs_min_size =  1000                                       # Specify minimum blobs size
+    blobs_threshold = 100                                       # Specify blobs colour distance threshold
+    blobs_min_size =  1000                                      # Specify minimum blobs size
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
                                minsaturation = minsaturation,
                                minvalue = min_value)
-    filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    filtered = filtered.morphClose()                             # Perform morphOps TODO: look for better options
-    #show_image_until_pressed(filtered)
+    filtered = filtered.invert()                                # Invert black and white (to have object as white)
+    filtered = filtered.morphClose()                            # Perform morphOps TODO: look for better options
     all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
     if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
+        all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
         return "No blobs found"
-    m_valve = all_blobs[0]                                       # m_valve is the closes blob to the click
+    m_valve = all_blobs[-1]                                     # m_valve is the closes blob to the click
     return m_valve
 
 
@@ -136,154 +136,150 @@ def GetColourData(img, coords):
                        CROP_SIZE, centered= True)
     cropped_num = cropped.getNumpyCv2()                             # Convert image to numpy array compatible with openCV
     cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)          # Convert image to HSV colour scheme with openCV
-    meanHue = np.mean(cropped_num[:,:,0])                           # Slice the NumPy array to get the mean Hue
-    meanSat = np.mean(cropped_num[:,:,1])                           # Slice the NumPy array to get the mean Sat
-    stdSat = np.std(cropped_num[:,:,1])                             # Slice the NumPy array to get the std Sat
-    minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
-    meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
-    # print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
-    # print meanSat, "- mean Sat"
-    # print stdSat, "- std Sat"
-    # print minSat, "- min Sat"
-    # print meanValue, " - min Val"
-    # raw_input("check results")                                  # FOR DEBUGGING
+    meanHue = np.mean(cropped[:,:,0])                           # Slice the NumPy array to get the mean Hue
+    meanSat = np.mean(cropped[:,:,1])                           # Slice the NumPy array to get the mean Sat
+    stdSat = np.std(cropped[:,:,1])                             # Slice the NumPy array to get the std Sat
+    minSat = np.min(cropped[:,:,1])                             # Slice the NumPy array to get the min Sat
+    meanValue = np.mean(cropped[:,:,2])                         # Slice the NumPy array to get the mean Brightness
 
     hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
     if hue_hist[0] and hue_hist[1] and hue_hist[2] and hue_hist[-1] and hue_hist[-2] and hue_hist[-3] != 0:
         max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location
         print "Object is red, then average hue is: ", max_index     # Report issue
-        meanHue = max_index                                         # Re-write Hue value
+        meanHue = max_index
+
 
     hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     return hsv_data
 
+# Function to name the object type
+def object_type():
+    QUESTION_TO_ASK ="Type in the name of the object type (no spaces):"
+    CONFIRMATION_TEXT = "Object name is %s. And it is one word. Y/N?"
+    SINGLE_WORD_WARNING = "Please, enter only single word (or use _ to seperate words)"
+    correct_name = False                            # Initialise naming loop
+    while not correct_name:                         # Start looping
+        object_type_name = raw_input(QUESTION_TO_ASK + "\n>>>")
+        if len(object_type_name.split()) > 1:
+            print SINGLE_WORD_WARNING
+            continue
+        if GetConfirmation(CONFIRMATION_TEXT%object_type_name) == False:
+            continue                                # If incorrect name, loop again
+        correct_name = True                         # If correct name, return it
+        return object_type_name
+
+
 # Function to write calibration results to file
-def store_results(closed_coords_stored, closed_angle_stored, open_angle_stored,
-                  closed_average_hue, closed_average_sat, closed_std_sat):
-    storage = open("valve_handle_data.txt", "w")
-    storage.write("""valve_coord_x: %s
-valve_coord_y: %s
-closed_angle_stored: %s
-open_angle_stored: %s
-closed_average_hue: %s
-closed_average_sat: %s
-closed_std_sat: %s""" %(closed_coords_stored[0],closed_coords_stored[1], closed_angle_stored, open_angle_stored,
-                  closed_average_hue, closed_average_sat, closed_std_sat))
+def store_results(object_coords_stored, object_name_stored, object_area_stored,
+                  object_rect_distance_stored, object_aspect_ratio_stored,
+                  object_average_hue, object_average_sat, object_std_sat):
+
+    FILE_NAME = object_name_stored + ".txt"
+    storage = open(FILE_NAME, "w")
+    storage.write("""object_coord_x: %s
+object_coord_y: %s
+object_name_stored: %s
+object_area_stored: %s
+object_rect_distance_stored: %s
+object_aspect_ratio_stored: %s
+object_average_hue: %s
+object_average_sat: %s
+object_std_sat: %s""" %(object_coords_stored[0],object_coords_stored[1], object_name_stored, object_area_stored,
+                  object_rect_distance_stored, object_aspect_ratio_stored,
+                  object_average_hue, object_average_sat, object_std_sat))
     storage.close()
-    print """valve_coord_x: %s
-valve_coord_y: %s
-closed_angle_stored: %s
-open_angle_stored: %s
-closed_average_hue: %s
-closed_average_sat: %s
-closed_std_sat: %s""" %(closed_coords_stored[0],closed_coords_stored[1], closed_angle_stored, open_angle_stored,
-                  closed_average_hue, closed_average_sat, closed_std_sat)
+    print """object_coord_x: %s
+object_coord_y: %s
+object_name_stored: %s
+object_area_stored: %s
+object_rect_distance_stored: %s
+object_aspect_ratio_stored: %s
+object_average_hue: %s
+object_average_sat: %s
+object_std_sat: %s""" %(object_coords_stored[0],object_coords_stored[1], object_name_stored, object_area_stored,
+                  object_rect_distance_stored, object_aspect_ratio_stored,
+                  object_average_hue, object_average_sat, object_std_sat)
+    return FILE_NAME
 
-# Function to get the required data (Type: Open or Closed)
-def get_handle_data_Closed():
-    USER_REQUEST = "Please put the camera as it would be during the ispection of the CLOSED valve handle."
+# Function to get the required foreign object data
+def get_object_data():
+    USER_REQUEST = "Please put the camera so that it could detect the example foreign object."
     REQUEST_WHILE_IMAGE_SHOWN = "This is the image taken. Close the image by right clicking on it or pressing escape"
-    CONFIRMATION_QUESTION = "Was the coolant valve handle clearly seen in the CLOSED position? Y/N"
-    COORDINATES_REQUEST = "Pease right click on the valve handle to calibrate its coordinates"
+    CONFIRMATION_QUESTION = "Was the foreign object example handle clearly seen in the image? Y/N"
+    COORDINATES_REQUEST = "Pease right click on the foreign object example to calibrate its coordinates"
 
+    calibration_data_not_acquired = True                             # Initialise object detection loop
+    while calibration_data_not_acquired:                             # Start the loop
+        # Get the example foreign object image
+        img_object = RequestConfirmedImage(USER_REQUEST, REQUEST_WHILE_IMAGE_SHOWN,CONFIRMATION_QUESTION)
 
-    closed_data_acquired = True
-    while closed_data_acquired:
-        # Get the closed valve handle image
-        img_closed = RequestConfirmedImage(USER_REQUEST, REQUEST_WHILE_IMAGE_SHOWN,CONFIRMATION_QUESTION)
-
-        # Get the coordinates of the valve
-        closed_coords = GetValveCoords(img_closed,COORDINATES_REQUEST)
+        # Get the coordinates of example object
+        object_coords = getObjectCoords(img_object,COORDINATES_REQUEST)
 
         # Get the average colour data around the selected part
-        handle_colour_data = GetColourData(img_closed, closed_coords)
+        object_colour_data = GetColourData(img_object, object_coords)
         #In format of: hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
 
-        # Try to detect the valve
-        handle_found = ValveDetection(img_closed, closed_coords, handle_colour_data)
-        # If valve was not found start again
-        if handle_found == "No blobs found":
-            print "Valve was not found, please continue the calibration again"
+        # Try to detect the object
+        object_found = InitialObjectDetection(img_object, object_coords, object_colour_data)
+        # If no objects were found: Start again TODO: ADD aditonal user calibration?
+        if object_found == "No blobs found":
+            print "No objects were found, please continue the calibration again"
             continue
 
-        # Check is valve was correctly found:
-        if correct_blob_confirmation(handle_found, img_closed) == False:
+        # Check if foreign object was correctly found:
+        if correct_blob_confirmation(object_found, img_object) == False:
             continue
 
-        # Record closed handle angle
-        closed_angle = handle_found.angle()
+        # Ask for the type of foreign object:
+        object_type_name = object_type()
 
-        # Return closed handle calibration data
-        total_closed_data = {"colour_data": handle_colour_data,
-                             "closed_coords": closed_coords,
-                             "closed_angle": closed_angle}
-        return total_closed_data
+        # Record foreign object data TODO: Possible additional data to record
+        object_area = object_found.area()
+        object_rect_distance = object_found.rectangleDistance()
+        object_aspect_ratio = object_found.aspectRatio()
+
+        # Return foreign object calibration data
+        total_object_data = {"colour_data": object_colour_data,
+                             "object_coords": object_coords,
+                             "object_type_name": object_type_name,
+                             "object_area": object_area,
+                             "object_rect_distance": object_rect_distance,
+                             "object_aspect_ratio": object_aspect_ratio,
+                             }
+        return total_object_data
 
         # Exit the loop
-        closed_data_acquired = False
-
-
-
-
-
-
-# Function to get OPEN handle data:
-def get_handle_data_Open(closed_coords, handle_colour_data):
-    USER_REQUEST = "Please put the camera as it would be during the ispection of the OPEN valve handle."
-    REQUEST_WHILE_IMAGE_SHOWN = "This is the image taken. Close the image by left clicking on it or pressing escape"
-    CONFIRMATION_QUESTION = "Was the coolant valve handle clearly seen in the OPEN position? Y/N"
-
-    open_data_acquired = True
-    while open_data_acquired:
-        # Get the open valve handle image
-        img_open = RequestConfirmedImage(USER_REQUEST, REQUEST_WHILE_IMAGE_SHOWN, CONFIRMATION_QUESTION)
-
-        # Try to detect the valve
-        handle_found = ValveDetection(img_open, closed_coords, handle_colour_data)
-        # If valve was not found start again
-        if handle_found == "No blobs found":
-            print "Valve was not found, please continue the calibration again"
-            continue
-
-        # Record closed handle angle
-        open_angle = handle_found.angle()
-
-        # Return open handle calibration data
-        return open_angle
-
-        # Exit the loop
-        closed_data_acquired = False
+        calibration_data_not_acquired = False
 
 
 # Function to perform calibration
 def perform_calibration():
 
-    # Function to get the closed valve handle data (avg hue, avg sat, std sat, closed angle, click coords)
-    closed_data = get_handle_data_Closed()
-    # Function to get the open valve handle data (open anlge)
-    open_angle = get_handle_data_Open(closed_data["closed_coords"], closed_data["colour_data"])
+    # Function to get the foreign object data (avg hue, avg sat, std sat,
+    # click coords, object_type_name, object_area, object_rect_distance, object_aspect_ratio)
+    object_data = get_object_data()
+
     #Results to store
+    object_coords_stored = object_data["object_coords"]
+    object_name_stored = object_data["object_type_name"]
+    object_area_stored = object_data["object_area"]
+    object_rect_distance_stored = object_data["object_rect_distance"]
+    object_aspect_ratio_stored = object_data["object_aspect_ratio"]
+    object_average_hue = object_data["colour_data"]["avg_hue"]
+    object_average_sat = object_data["colour_data"]["avg_sat"]
+    object_std_sat = object_data["colour_data"]["std_sat"]
 
-    closed_coords_stored = closed_data["closed_coords"]
-    closed_angle_stored = closed_data["closed_angle"]
-    open_angle_stored = open_angle
-    closed_average_hue = closed_data["colour_data"]["avg_hue"]
-    closed_average_sat = closed_data["colour_data"]["avg_sat"]
-    closed_std_sat = closed_data["colour_data"]["std_sat"]
+    FILE_NAME = store_results(object_coords_stored, object_name_stored, object_area_stored,
+                  object_rect_distance_stored, object_aspect_ratio_stored,
+                  object_average_hue, object_average_sat, object_std_sat)
+    return FILE_NAME
+# MAIN SOFTWARE:
+# Initialisation:
 
-    store_results(closed_coords_stored, closed_angle_stored, open_angle_stored,
-                  closed_average_hue, closed_average_sat, closed_std_sat)
+setup()                                                         # Perform camera setup
 
+### CALIBRATION PART
+FILE_NAME = perform_calibration()
 
-# MAIN SOFTWARE FUNCTION
-def do_Calibration_procedure():
-    # Initialisation:
-    setup()                                                         # Perform camera setup
-    perform_calibration()
-    raw_input("Calibration Done. Saved as valve_handle_data.txt")
-
-
-
-# If called by itself:
-if __name__ == '__main__':
-    print do_Calibration_procedure()
+raw_input("Calibration Done. Saved as " + FILE_NAME)

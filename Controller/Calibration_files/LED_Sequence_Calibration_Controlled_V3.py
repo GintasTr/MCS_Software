@@ -1,6 +1,9 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
 from SimpleCV import *
 import cv2
-from Controller import LED_Sequence_Controlled_V6_used
+from Controller import LED_Sequence_Controlled_V6
 
 # prepares, selects the camera
 def setup():
@@ -112,33 +115,19 @@ def GetColourData(img, coords):
                        CROP_SIZE, centered= True)
     show_image_until_pressed(cropped)
 
-    # cropping_blob = cropped1.findBlobs(threshval = BLOB_BRIGHTNESS_LIMIT)
-    #                                                             # Find all blobs in the cropped first area
-    # cropping_blob.draw()
-    # show_image_until_pressed(cropped1)
-    #
-    # cropping_blob = cropping_blob.sortArea()[-1]                # Sort all found blobs based on area
-    #
-    # if cropping_blob.width()*CROPPING_AROUND_BLOB_SCALAR > CROP_SIZE:
-    #
-    # cropped = cropped1.crop(cropping_blob.coordinates()[0],     # Adjust cropping area (x,y,w,h)
-    #               cropping_blob.coordinates()[1], cropping_blob.width()*CROPPING_AROUND_BLOB_SCALAR,
-    #                     cropping_blob.height()*CROPPING_AROUND_BLOB_SCALAR, centered= True)
-    #cropped = cropped.scale(4)
-
     cropped_num = cropped.getNumpyCv2()                         # Convert image to numpy array compatible with openCV
     cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)  # Convert image to HSV colour scheme with openCV
 
     meanHue = np.mean(cropped_num[:,:,0])                           # Slice the NumPy array to get the mean Hue
     meanSat = np.mean(cropped_num[:,:,1])                           # Slice the NumPy array to get the mean Sat
     stdSat = np.std(cropped_num[:,:,1])                             # Slice the NumPy array to get the std Sat
-    minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
-    meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
-    print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
+    # minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
+    # meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
+    # print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
     # print meanSat, "- mean Sat"
     # print stdSat, "- std Sat"
     # print minSat, "- min Sat"
-    print meanValue, " - min Val"
+    # print meanValue, " - min Val"
 
     hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
     if hue_hist[0] and hue_hist[1] and hue_hist[2] and hue_hist[-1] and hue_hist[-2] and hue_hist[-3] != 0:
@@ -204,7 +193,7 @@ def perform_calibration():
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
         m_led_data = GetColourData(m_led_img, m_led_coords)
                                                                 # Detect the Main LED blob
-        m_led_blob = LED_Sequence_Controlled_V6_used.MainLedDetection(m_led_img, m_led_coords, m_led_data)
+        m_led_blob = LED_Sequence_Controlled_V6.MainLedDetection(m_led_img, m_led_coords, m_led_data)
         if m_led_blob == "No blobs found":                      # If no leds were found
             continue                                            # Go to the start of the loop (take image again)
                                                                 # Confirm that the blob was found correctly
@@ -244,7 +233,7 @@ def perform_calibration():
             while(elapsed_time<seq_time):                           # Loop while sequence is not finished
                 live_img = GetImage()                               # Obtain live image
                                                                     # Measure the illumination around LEDs
-                area_light = LED_Sequence_Controlled_V6_used.GetLight(live_img, m_led_coords, m_led_data, dist_led)
+                area_light = LED_Sequence_Controlled_V6.GetLight(live_img, m_led_coords, m_led_data, dist_led)
                 if area_light == "No blobs found":                  # Check whether No blobs were found
                     print "Lost main LED, please re-calibrate"      # Inform the user about "No blobs"
                     sequence_failed = True                          # When "break" out of loop, signal to start over

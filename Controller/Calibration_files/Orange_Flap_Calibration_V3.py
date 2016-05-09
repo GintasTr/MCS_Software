@@ -1,34 +1,12 @@
 from SimpleCV import *
 import cv2
-
-
-# to turn on/off video feedback for calibration
-def debug():
-    # question for user
-    while True:
-        screen = raw_input("Do you want video feedback? Y/N ")
-        screen = screen.lower()
-        if screen[0] == "y":
-            return True
-        elif screen[0] == "n":
-            return False
-        else:
-            print "Incorrect value entered. Please, enter Y or N."
-
+from Controller import Orange_Flap_V3
 
 # prepares, selects the camera
 def setup():
     global cam
     cam = Camera()
     time.sleep(1)
-
-
-# for multiple windows OpenCV (includes NumpyConversion)
-def ShowWindow(name, image):
-    converted = image.getNumpyCv2()
-    cv2.imshow("Image: %s" % name, converted)
-    return
-    ##requires cv2.waitKey(10) !!!
 
 
 # for image acquisition from camera (and flipping)
@@ -38,7 +16,7 @@ def GetImage():
     img = img.flipHorizontal()
     return img
 
-
+# Function to check if flap is clearly seen in the image
 def IsFlapClear(flapImg):
     print "Look at the image and inspect whether the flap is clearly visible in the image." \
           " Then left click ANYWHERE ON THE PICTURE to close it and answer the question."
@@ -63,8 +41,8 @@ def IsFlapClear(flapImg):
         else:
             print "Incorrect value entered."
 
-## CAN ADD ESC OR ENTER KEYBOARD TO EXIT.
 
+# Function to acquire flat position image
 def AcquireFlatImage():  # Acquire flat flap image for calibration
     flat_image_done = False
     while (not flat_image_done):  # Repeat until flat flap image is acquired correctly
@@ -78,7 +56,9 @@ def AcquireFlatImage():  # Acquire flat flap image for calibration
             None
     return flat_image
 
-def AcquireSlopeImage():  # Acquire flat flap image for calibration
+
+# Function to acquire slope position image
+def AcquireSlopeImage():  # Acquire slope flap image for calibration
     flat_image_done = False
     while (not flat_image_done):  # Repeat until flat flap image is acquired correctly
         raw_input(
@@ -108,6 +88,8 @@ def get_calibration_coordinates(flatImg):
     Display().quit()    # Exit the display so it does not go to "Not responding"
     return mouse_coords
 
+
+# Function to find average values of colour (hue, sat, val)
 def ColorAveraging(flat_image, Calibration_coords):
     crop_length = 20 #Adjust cropping area (x,y,w,h)
     cropped = flat_image.crop(Calibration_coords[0],
@@ -135,35 +117,18 @@ def ColorAveraging(flat_image, Calibration_coords):
     values = {"AvHue": meanHue, "AvSat": meanSat, "StdSat": stdSat}
     return values
 
-def apply_filter(Calibration_values, img):
-    Std_constant = 6 #TODO how much of illumination?
-    min_value = 30 #minimal illumination of the object
-    minsaturation = (Calibration_values["AvSat"]/2)
-    img = img.toHSV()
-    Filtered = img.hueDistance(color = Calibration_values["AvHue"],
-                               minsaturation = minsaturation
-                               #minvalue = min_value
-                               )
-    Filtered = Filtered.invert()
-    #Filtered = Filtered.morphClose() #I THINK THIS SHOULD BE OPEN
-    Filtered = Filtered.erode(1)
-    Filtered = Filtered.dilate(2) #TODO test these morph ops...
-    return Filtered
-
 
 # Calibration procedure
-def Flat_Calibration():     #TODO rearrange functions to avoid function-in function, to have only 1 variable passable in between
-    blobs_threshold_flat = 130
+def Flat_Calibration():
+    blobs_threshold_flat = 180
     blobs_min_size_flat = 1000
     flat_calibration_done = False
     while (not flat_calibration_done):  # Repeat until flat flap calibration is performed correctly
         flat_image = AcquireFlatImage()
-        raw_input("Got the flat_image, now perform calibration")
         Calibration_coords = get_calibration_coordinates(flat_image)
         print "Approximate coordinates of flap: ", Calibration_coords
         Calibration_values = ColorAveraging(flat_image, Calibration_coords)
-        filteredImage = apply_filter(Calibration_values, flat_image)
-        #TODO replace this here and everywhere else with function findAndSortBlobs.
+        filteredImage = Orange_Flap_V3.apply_filter(Calibration_values, flat_image)
         possible_flaps = filteredImage.findBlobs(threshval = blobs_threshold_flat, minsize=blobs_min_size_flat)
         if possible_flaps > 1:
             possible_flaps = possible_flaps.sortDistance(point =(Calibration_coords[0], Calibration_coords[1]))
@@ -197,19 +162,19 @@ def Flat_Calibration():     #TODO rearrange functions to avoid function-in funct
                 break
             else:
                 print "Incorrect value entered."
-    FlapWHRatio = flap.width() / flap.height()
+    FlapWHRatio = round(float(flap.width()) / float(flap.height()), 4)
     values = {"AvHue": Calibration_values["AvHue"], "AvSat": Calibration_values["AvSat"],
               "StdSat": Calibration_values["StdSat"], "FlatWHRatio": FlapWHRatio,
               "mouseX": Calibration_coords[0], "mouseY": Calibration_coords[1]}
     return values
 
 def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
-    blobs_threshold_slope = 100
+    blobs_threshold_slope = 180
     blobs_min_size_slope = 1000
     slope_calibration_done = False
     while (not slope_calibration_done):
         slope_image = AcquireSlopeImage()
-        filtered_image = apply_filter({"AvHue": AvHue, "AvSat": AvSat, "StdSat": StdSat}, slope_image)
+        filtered_image = Orange_Flap_V3.apply_filter({"AvHue": AvHue, "AvSat": AvSat, "StdSat": StdSat}, slope_image)
         possible_flaps = filtered_image.findBlobs(threshval = blobs_threshold_slope, minsize=blobs_min_size_slope)   #CAN ADD SIZES AND STUFF
         if possible_flaps > 1:
             possible_flaps = possible_flaps.sortDistance(point =(mouseX, mouseY))
@@ -241,46 +206,55 @@ def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
                 break
             else:
                 print "Incorrect value entered."
-    SlopeWHRatio = flap.width() / flap.height()
+    SlopeWHRatio = round(float(flap.width()) / float(flap.height()), 4)
+
     return SlopeWHRatio
 
+# Function to write calibration results to file
+def store_results(flat_data, slope_data):
+    FILE_NAME = "Orange_flap_calibration_data.txt"
+    with open(FILE_NAME, "w") as storage:
+        storage.write(
+"""mouseX: %s
+mouseY: %s
+AvHue: %s
+AvSat: %s
+FlatWHRatio: %s
+SlopeWHRatio: %s"""
+                  % (flat_data["mouseX"],
+                    flat_data["mouseY"],
+                    flat_data["AvHue"],
+                    flat_data["AvSat"],
+                    flat_data["FlatWHRatio"],
+                    slope_data))
+    print (
+"""coord_x: %s
+coord_y: %s
+avg_hue: %s
+avg_sat: %s
+FlatWHRatio: %s
+SlopeWHRatio: %s"""
+                  % (flat_data["mouseX"],
+                    flat_data["mouseY"],
+                    flat_data["AvHue"],
+                    flat_data["AvSat"],
+                    flat_data["FlatWHRatio"],
+                    slope_data))
 
 
-## MAIN SOFTWARE
+#MAIN SOFTWARE FUNCTION
+def perform_calibration_procedure():
+    setup()
 
-setup()
-debug_mode = False  ##REPLACE WITH debug() for a question.##TODO add debug_mode check where needed
 
-#TODO calibrate these thresholds
-blobs_threshold_main = 130   #thresholds for calibration blob detection and main process blob detection
-blobs_min_size_main = 1000
-
-flat_data = Flat_Calibration()
-slope_data = Slope_Calibration(flat_data["AvHue"], flat_data["AvSat"], flat_data["StdSat"],
+    flat_data = Flat_Calibration()
+    slope_data = Slope_Calibration(flat_data["AvHue"], flat_data["AvSat"], flat_data["StdSat"],
                                 flat_data["mouseX"], flat_data["mouseY"])
+    store_results(flat_data, slope_data)
 
-## Main loop:
-while True:
-###TODO SOMETHING TO INITIATE, MAYBE STORE DATA SOMEWHERE ABOUT CALIBRATION
-    time.sleep(1)   #So that not all the time it is checking, not usefull in real software
-    Img = GetImage()
-    Img = Img.toHSV()
-    filtered = apply_filter(flat_data, Img)
-    possible_flaps = filtered.findBlobs(threshval = blobs_threshold_main, minsize=blobs_min_size_main)
-    if possible_flaps > 1:
-        possible_flaps = possible_flaps.sortDistance(point = (flat_data["mouseX"], flat_data["mouseY"]))
-    elif possible_flaps < 1:
-        print "No flaps found"
-        continue
-    possible_flaps.draw(width=3)
-    filtered.show()
-    flap = possible_flaps[0]
-    #Img.dl().rectangle2pts(flap.topLeftCorner(), flap.bottomRightCorner(),Color.RED, width = 5) #FOR FEEDBACK ONLY
-    #Img.show()  #FOR FEEDBACK ONLY
-    detectedRatio = flap.width()/flap.height()
-    if detectedRatio > (flat_data["FlatWHRatio"]+2*slope_data) / 3:
-        print "Flap is in slope position"
-    elif detectedRatio <= (flat_data["FlatWHRatio"]+2*slope_data) / 3:
-        print "Flap is in flat position"
-    else:
-        print "Detected incorrectly"
+
+# If called by itself:
+if __name__ == '__main__':
+    perform_calibration_procedure()
+
+

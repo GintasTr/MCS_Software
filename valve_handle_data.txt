@@ -1,0 +1,7 @@
+valve_coord_x: 247
+valve_coord_y: 291
+closed_angle_stored: -82.2348327637
+open_angle_stored: 2.30906677246
+closed_average_hue: 16.46
+closed_average_sat: 153.41
+closed_std_sat: 8.62681285296

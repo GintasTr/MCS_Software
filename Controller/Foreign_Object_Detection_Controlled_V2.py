@@ -1,3 +1,7 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+
 from SimpleCV import *
 import cv2
 from os.path import exists
@@ -40,7 +44,7 @@ def ObjectDetection(img, coords, data, object_area):
         all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
         return "No blobs found"
-    foreign_object = all_blobs[-1]                                       # foreign_object is the closes blob to the click
+    foreign_object = all_blobs[0]                                       # foreign_object is the closes blob to the click
     return foreign_object
 
 
@@ -166,5 +170,5 @@ def detect_foreign_object(calibration_name):
 
 # If called by itself, just so that it does not show error when something is returned
 if __name__ == '__main__':
-    result = detect_foreign_object("Blue_Box")
+    result = detect_foreign_object("Green_breadboard")
     print "Result returned from the module: " + result

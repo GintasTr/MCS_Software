@@ -81,25 +81,27 @@ def scanning_procedure(Handle_coords, colour_data, closed_angle, open_angle):
         img = GetImage()                                           # Get the image
         Handle = HandleDetection(img, Handle_coords, colour_data)  # Try to detect the handle
 
-        middle_angle = abs(closed_angle-open_angle)/2           # Find the middle distance between two angles
         if Handle == "No blobs found":                          # If no blobs were found
             state = "Not found"
-            distance_from_closed = 0.0
             text2 = "Valve is: %s" % state
-            #return "Not found"
             img.dl().text(text2, (10, 10),color=Color.RED) #FOR FEEDBACK ONLY
             img.show()  #FOR FEEDBACK ONLY
             continue
-        if abs(Handle.angle() - closed_angle) > middle_angle:   # Check if handle is open or closed
-            state = "Open"
-            distance_from_closed = abs(Handle.angle() - closed_angle)
-            #return "Open"
-        else:
-            state = "Closed"
-            distance_from_closed = abs(Handle.angle() - closed_angle)
-            #return "Closed"
 
-        text1 = "Handle angle: %.0f from closed." % distance_from_closed
+        current_angle = Handle.angle()
+
+
+        inverse_to_distance_from_closed = abs((current_angle-closed_angle)%180 - 90)
+        inverse_to_distance_from_open = abs((current_angle-open_angle)%180 - 90)
+        if inverse_to_distance_from_closed > inverse_to_distance_from_open:
+            state = "Closed"
+
+        else:
+            state = "Open"
+
+
+        text1 = "Handle angle: %.0f from open." \
+                "and %.0f from closed" % (inverse_to_distance_from_closed, inverse_to_distance_from_open)
         text2 = "Valve is: %s" % (state)
         Handle.drawMinRect(layer=img.dl(), color = Color.RED, width = 3)
         img.dl().setFontSize(25)
@@ -181,3 +183,7 @@ for i in range(0, len(results)):
 final_result = calculate_average(results)
 
 print "Coolant valve handle position is:", final_result
+
+
+
+

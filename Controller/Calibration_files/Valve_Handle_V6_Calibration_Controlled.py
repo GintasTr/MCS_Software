@@ -1,5 +1,6 @@
 from SimpleCV import *
 import cv2
+from Controller import Valve_Handle_Controlled_V6
 
 # prepares, selects the camera
 def setup():
@@ -101,32 +102,6 @@ def correct_blob_confirmation(handle, img):
     return correct_blob
 
 
-# Function to detect the main LED:
-def ValveDetection(img, coords, data):
-    Std_constant = 3                                            # Describes how many std dev of value to include
-    min_value = 30                                              # Minimal illumination threshold
-                                                                # Derive minimum saturation. As a reminder: hsv_data =
-                                                                # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
-    img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 200                                       # Specify blobs colour distance threshold
-    blobs_min_size =  1000                                       # Specify minimum blobs size
-                                                                # Apply filters to the image TODO: calibrate or change the filtering
-    filtered = img.hueDistance(color = data["avg_hue"],
-                               minsaturation = minsaturation,
-                               minvalue = min_value)
-    filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    filtered = filtered.morphClose()                             # Perform morphOps TODO: look for better options
-    #show_image_until_pressed(filtered)
-    all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
-    if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
-    elif all_blobs < 1:
-        return "No blobs found"
-    m_valve = all_blobs[0]                                       # m_valve is the closes blob to the click
-    return m_valve
-
-
 # Function to get the colour data of small area around certain point
 def GetColourData(img, coords):
     CROP_SIZE = 10                                              # Area around the point to be evaluated (square width)
@@ -160,7 +135,8 @@ def GetColourData(img, coords):
 # Function to write calibration results to file
 def store_results(closed_coords_stored, closed_angle_stored, open_angle_stored,
                   closed_average_hue, closed_average_sat, closed_std_sat):
-    storage = open("valve_handle_data.txt", "w")
+    FILE_NAME = "valve_handle_data.txt"
+    storage = open(FILE_NAME, "w")
     storage.write("""valve_coord_x: %s
 valve_coord_y: %s
 closed_angle_stored: %s
@@ -200,7 +176,7 @@ def get_handle_data_Closed():
         #In format of: hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
 
         # Try to detect the valve
-        handle_found = ValveDetection(img_closed, closed_coords, handle_colour_data)
+        handle_found = Valve_Handle_Controlled_V6.HandleDetection(img_closed, closed_coords, handle_colour_data)
         # If valve was not found start again
         if handle_found == "No blobs found":
             print "Valve was not found, please continue the calibration again"
@@ -223,10 +199,6 @@ def get_handle_data_Closed():
         closed_data_acquired = False
 
 
-
-
-
-
 # Function to get OPEN handle data:
 def get_handle_data_Open(closed_coords, handle_colour_data):
     USER_REQUEST = "Please put the camera as it would be during the ispection of the OPEN valve handle."
@@ -239,7 +211,7 @@ def get_handle_data_Open(closed_coords, handle_colour_data):
         img_open = RequestConfirmedImage(USER_REQUEST, REQUEST_WHILE_IMAGE_SHOWN, CONFIRMATION_QUESTION)
 
         # Try to detect the valve
-        handle_found = ValveDetection(img_open, closed_coords, handle_colour_data)
+        handle_found = Valve_Handle_Controlled_V6.HandleDetection(img_open, closed_coords, handle_colour_data)
         # If valve was not found start again
         if handle_found == "No blobs found":
             print "Valve was not found, please continue the calibration again"

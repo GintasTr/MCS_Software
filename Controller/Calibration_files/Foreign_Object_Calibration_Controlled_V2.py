@@ -1,3 +1,7 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+
 from SimpleCV import *
 import cv2
 
@@ -123,7 +127,7 @@ def InitialObjectDetection(img, coords, data):
         all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
         return "No blobs found"
-    m_valve = all_blobs[-1]                                     # m_valve is the closes blob to the click
+    m_valve = all_blobs[0]                                     # m_valve is the closes blob to the click
     return m_valve
 
 
@@ -134,13 +138,20 @@ def GetColourData(img, coords):
     cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
                        coords[1], CROP_SIZE,
                        CROP_SIZE, centered= True)
-    cropped = cropped.getNumpyCv2()                             # Convert image to numpy array compatible with openCV
-    cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)          # Convert image to HSV colour scheme with openCV
-    meanHue = np.mean(cropped[:,:,0])                           # Slice the NumPy array to get the mean Hue
-    meanSat = np.mean(cropped[:,:,1])                           # Slice the NumPy array to get the mean Sat
-    stdSat = np.std(cropped[:,:,1])                             # Slice the NumPy array to get the std Sat
-    minSat = np.min(cropped[:,:,1])                             # Slice the NumPy array to get the min Sat
-    meanValue = np.mean(cropped[:,:,2])                         # Slice the NumPy array to get the mean Brightness
+    cropped_num = cropped.getNumpyCv2()                             # Convert image to numpy array compatible with openCV
+    cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)          # Convert image to HSV colour scheme with openCV
+    meanHue = np.mean(cropped_num[:,:,0])                           # Slice the NumPy array to get the mean Hue
+    meanSat = np.mean(cropped_num[:,:,1])                           # Slice the NumPy array to get the mean Sat
+    stdSat = np.std(cropped_num[:,:,1])                             # Slice the NumPy array to get the std Sat
+    minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
+    meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
+
+    hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
+    if hue_hist[0] and hue_hist[1] and hue_hist[2] and hue_hist[-1] and hue_hist[-2] and hue_hist[-3] != 0:
+        max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location
+        print "Object is red, then average hue is: ", max_index     # Report issue
+        meanHue = max_index
+
 
     hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     return hsv_data
@@ -267,12 +278,21 @@ def perform_calibration():
                   object_rect_distance_stored, object_aspect_ratio_stored,
                   object_average_hue, object_average_sat, object_std_sat)
     return FILE_NAME
+
+
+
 # MAIN SOFTWARE:
-# Initialisation:
+def do_calibration_procedure():
+    setup()                                                         # Perform camera setup
 
-setup()                                                         # Perform camera setup
+    ### CALIBRATION PART
+    FILE_NAME = perform_calibration()
 
-### CALIBRATION PART
-FILE_NAME = perform_calibration()
+    raw_input("Calibration Done. Saved as " + FILE_NAME)
 
-raw_input("Calibration Done. Saved as " + FILE_NAME)
+
+# If called by itself, perform calibration
+if __name__ == '__main__':
+    do_calibration_procedure()
+
+

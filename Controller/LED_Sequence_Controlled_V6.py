@@ -1,3 +1,7 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+
 from SimpleCV import *
 import cv2
 from os.path import exists
@@ -51,25 +55,27 @@ def debug_pixel_value(img):
 
 # Function to detect the main LED:
 def MainLedDetection(img, coords, data):
-    min_brightness = 240                                        # Minimal illumination threshold
+    # STD_CONSTANT = 5                                            # Define how many standard deviations of saturation to include
+    MIN_BRIGHTNESS = 240                                        # Minimal illumination threshold
+    BLOBS_BRIGHTNESS_THRESHOLD = 230                            # Define how close to the calibrated colour blobs have to be
+    BLOBS_MAX_SIZE = 5000                                       # Specify max size of blob
+    BLOBS_MIN_SIZE = 200                                        # Specify min size of blob
+
+    img = img.toHSV()                                           # Convert image to HSV colour space
+    # minsaturation = (data["avg_sat"]- STD_CONSTANT * data["std_sat"])
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    BLOBS_BRIGHTNESS_THRESHOLD = 170
-    img = img.toHSV()                                           # Convert image to HSV colour space
-    BLOBS_MAX_SIZE = 7000                                       # Specify max size of blob
-    BLOBS_MIN_SIZE = 100                                        # Specify min size of blob
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
-                               minsaturation=5,
-                               minvalue = min_brightness)
+                              minvalue = MIN_BRIGHTNESS)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     filtered = filtered.morphOpen()                             # Perform morphOps
                                                                 # Look for blobs
-    debug_pixel_value(filtered)                                 # DEBUGGING FUNCTION
+    #debug_pixel_value(filtered)                                 # DEBUGGING FUNCTION
     all_blobs = filtered.findBlobs(maxsize=BLOBS_MAX_SIZE, minsize= BLOBS_MIN_SIZE,
                                    threshval = BLOBS_BRIGHTNESS_THRESHOLD )
     if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
+        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
         for i in range(0, len(all_blobs)):                      # For every found blob draw a rect on filtered image
                                                                 # Only for debugging. TODO: Remove these
             filtered.dl().rectangle2pts(all_blobs[i].topLeftCorner(),
@@ -78,8 +84,8 @@ def MainLedDetection(img, coords, data):
     elif all_blobs < 1:                                         # If none blobs found
         # print "No blobs found"                                # Print and return that no blobs were found. Not needed
         return "No blobs found"
-    #show_image_until_pressed(filtered)                         # USED FOR DEBUGGING
-    m_led = all_blobs[-1]                                       # m_led is the closest blob to mouse click
+    # show_image_until_pressed(filtered)                        # USED FOR DEBUGGING
+    m_led = all_blobs[0]                                        # m_led is the closest blob to mouse click
     return m_led
 
 
@@ -105,8 +111,8 @@ def GetLight(img, coords, hsv_data, dist):
 
 # Function to get number_of_blobs
 def BlobsNumber(img, coords, hsv_data, dist):
-    MINIMUM_BLOB_SIZE = 50
-    dist_scalar = 3                                             # Margin of distance to include both LEDs
+    MINIMUM_BLOB_SIZE = 100
+    dist_scalar = 2.5                                           # Margin of distance to include both LEDs
     crop_length = int(round(dist_scalar*dist))
     main_blob = MainLedDetection(img,coords,hsv_data)           # Get main led blob. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
@@ -123,7 +129,7 @@ def BlobsNumber(img, coords, hsv_data, dist):
     cropped = cropped.invert()                                  # Invert so that light areas are white
     cropped = cropped.morphOpen()
     cropped = cropped.erode(iterations = 1)                     # FOR BIGGER RANGE
-    cropped = cropped.dilate(iterations=1)                      # If from close - change to 1
+    cropped = cropped.dilate(iterations = 1)                      # If from close - change to 1
 
     cropped.show()
     all_blobs = cropped.findBlobs(minsize = MINIMUM_BLOB_SIZE)
@@ -298,7 +304,7 @@ def get_average_period(led_sequence):
 # Function to compare set frequency to some pre-defined values.
 # Single value in led_sequence is: LED state: ON at 14.6632 Delta T from last state: 0.4788
 def compare_frequency(led_sequence):
-    THRESHOLD_FREQUENCY = 2.0                                         # Threshold blinking frequency (in Hz)
+    THRESHOLD_FREQUENCY = 1.0                                         # Threshold blinking frequency (in Hz)
 
     threshold_period = 1.0/THRESHOLD_FREQUENCY                        # Calculate threshold Delta T
 
