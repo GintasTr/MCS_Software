@@ -1,15 +1,19 @@
 # Scanning software has to be in "Controller folder"
 # Calibration files have to be in  "Controller folder/Calibration_files".
 
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 
 from SimpleCV import *
-import cv2
 from os.path import exists
 
+cam = None
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    if cam == None:
+        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera                                          # Only for laptop
     time.sleep(1)
 
 # Shows the image until the button is pressed
@@ -26,11 +30,11 @@ def show_image_briefly(img):
     img.show()                                              # Show the image on Display
 
 
-# Function to get the image from camera
+# for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()                                            # Get image from camera
-    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    img = cam.getImage()
+    #img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     return img
 
 
@@ -55,11 +59,11 @@ def debug_pixel_value(img):
 
 # Function to detect the main LED:
 def MainLedDetection(img, coords, data):
-    # STD_CONSTANT = 5                                            # Define how many standard deviations of saturation to include
-    MIN_BRIGHTNESS = 240                                        # Minimal illumination threshold
-    BLOBS_BRIGHTNESS_THRESHOLD = 230                            # Define how close to the calibrated colour blobs have to be
+    # STD_CONSTANT = 5                                          # Define how many standard deviations of saturation to include
+    MIN_BRIGHTNESS = 150 #240 on laptop                         # Minimal illumination threshold
+    BLOBS_BRIGHTNESS_THRESHOLD = 240  #230 on laptop            # Define how close to the calibrated colour blobs have to be
     BLOBS_MAX_SIZE = 5000                                       # Specify max size of blob
-    BLOBS_MIN_SIZE = 200                                        # Specify min size of blob
+    BLOBS_MIN_SIZE = 10                                         # Specify min size of blob
 
     img = img.toHSV()                                           # Convert image to HSV colour space
     # minsaturation = (data["avg_sat"]- STD_CONSTANT * data["std_sat"])
@@ -72,15 +76,13 @@ def MainLedDetection(img, coords, data):
     filtered = filtered.morphOpen()                             # Perform morphOps
                                                                 # Look for blobs
     #debug_pixel_value(filtered)                                 # DEBUGGING FUNCTION
-    all_blobs = filtered.findBlobs(maxsize=BLOBS_MAX_SIZE, minsize= BLOBS_MIN_SIZE,
-                                   threshval = BLOBS_BRIGHTNESS_THRESHOLD )
+    all_blobs = filtered.findBlobs(
+                                #maxsize=BLOBS_MAX_SIZE,
+                                #minsize= BLOBS_MIN_SIZE,
+                                threshval = BLOBS_BRIGHTNESS_THRESHOLD )
+    show_image_until_pressed(filtered) #TESTING
     if all_blobs > 1:                                           # If more than 1 blob found
         all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
-        for i in range(0, len(all_blobs)):                      # For every found blob draw a rect on filtered image
-                                                                # Only for debugging. TODO: Remove these
-            filtered.dl().rectangle2pts(all_blobs[i].topLeftCorner(),
-                                        all_blobs[i].bottomRightCorner(),Color.GREEN, width = 5)
-            filtered.dl().text("%s" %i, (all_blobs[i].bottomRightCorner()), color=Color.RED)
     elif all_blobs < 1:                                         # If none blobs found
         # print "No blobs found"                                # Print and return that no blobs were found. Not needed
         return "No blobs found"
@@ -102,7 +104,7 @@ def GetLight(img, coords, hsv_data, dist):
                         blob_coordinates[1], crop_length,
                         crop_length, centered=True)
     cropped = cropped.toGray()                                  # Convert to Gray scale colour space
-    cropped.show()                                              # DEBUGGING
+    #cropped.show()                                              # DEBUGGING
     cropped = cropped.getGrayNumpy()                            # Convert to NumPy array
     light_value = np.mean(cropped)                              # Get average grayscale colour
     # print light_value                                         # For debugging TODO: Check for more efficient methods
@@ -131,13 +133,13 @@ def BlobsNumber(img, coords, hsv_data, dist):
     cropped = cropped.erode(iterations = 1)                     # FOR BIGGER RANGE
     cropped = cropped.dilate(iterations = 1)                      # If from close - change to 1
 
-    cropped.show()
+    #cropped.show()
     all_blobs = cropped.findBlobs(minsize = MINIMUM_BLOB_SIZE)
     if all_blobs<1:                           # Check whether blobs were found
         return "No blobs found"
                                                                 # Find ALL blobs in the image
-    all_blobs.draw(width=3)                                     # For debugging - draw all blobs
-    cropped.show()
+    #all_blobs.draw(width=3)                                     # For debugging - draw all blobs
+    #cropped.show()
     #show_image_briefly(cropped)                                # DEBUGGING
     number_of_blobs = len(all_blobs)                            # Return the number of found blobs
     return number_of_blobs
@@ -182,12 +184,17 @@ def SequenceScanning(cal_data):
                 return "Error - first LED not found"             # Return error
             continue                                             # Start from the top of the loop
         print "LED found, starting sequence scanning"            # Notify user about sequence scanning
-        start2 = time.clock()                                     # Mark the start of sequence
+        start2 = time.clock()                                    # Mark the start of sequence
         elapsed_old = 0                                          # Initialise for delta T acquisition
         previous_state = "Unknown"                               # Initialise previous LED state variable
-        elapsed_time = time.clock() - start2                      # Obtain value for while loop to not show error
+        elapsed_time = time.clock() - start2                     # Obtain value for while loop to not show error
         while(elapsed_time < seq_time):              # Loop while sequence is not finished
+
+            start3 = time.clock()#TIMINGS
+
             live_img = GetImage()                                # Obtain live image
+
+            print "time capturing:", (time.clock() - start3)#TIMINGS
 
             if scan_type == "illumination level":        # If scanning is performed based on illumination
                 light_level = GetLight(live_img, m_led_coords, m_led_data, dist_led)
@@ -219,7 +226,16 @@ def SequenceScanning(cal_data):
                       % (led_state, round(elapsed_time,4), round(delta_t,4))
 
             if scan_type == "number_of_blobs":           # If scanning is performed based on number_of_blobs
+
+                start3 = time.clock()#TIMINGS
+
                 number_of_blobs = BlobsNumber(live_img, m_led_coords, m_led_data, dist_led)
+
+                print "time blobbing:", (time.clock() - start3)#TIMINGS
+
+                start3 = time.clock()#TIMINGS
+
+
                 if number_of_blobs == "No blobs found":              # If no blobs were found
                     elapsed_time = (time.clock() - start2)            # Get elapsed time for the list
                     delta_t = elapsed_time - elapsed_old              # Calculate Delta T
@@ -228,6 +244,9 @@ def SequenceScanning(cal_data):
                                         % (round(elapsed_time,4), round(delta_t,4)))
                     print ("No blobs found at %.4f. Delta T from last state: %.4f"
                                         % (round(elapsed_time,4), round(delta_t,4)))
+
+                    print "time recording:", (time.clock() - start3)#TIMINGS
+
                     continue                                         # Start from the top of the loop
 
                 if number_of_blobs > 1:                              # Check if more than 1 LED is on
@@ -236,6 +255,9 @@ def SequenceScanning(cal_data):
                     led_state = "OFF"
                 if previous_state == led_state:                      # If current state is the same as previous, do nothing
                     elapsed_time = (time.clock() - start2)            # Update elapsed time for the loop
+
+                    print "time recording:", (time.clock() - start3)#TIMINGS
+
                     continue                                         # Loop again
                 previous_state = led_state                           # Update the previous state
                 elapsed_time = (time.clock() - start2)                # Calculate elapsed time
@@ -245,7 +267,11 @@ def SequenceScanning(cal_data):
                 led_sequence.append("LED state: %s at %.4f. Delta T from last state: %.4f" %
                                     (led_state, round(elapsed_time,4), round(delta_t,4)))
                                                                      # Print new values for debugging
-                print "LED state: %s at %.4f. Delta T from last state: %.4f" % (led_state, round(elapsed_time,4), round(delta_t,4))
+                print "LED state: %s at %.4f. Delta T from last state: %.4f" % \
+                      (led_state, round(elapsed_time,4), round(delta_t,4))
+
+                print "time recording:", (time.clock() - start3)#TIMINGS
+
                                                                  # Notify user about end of scanning
         print "END OF SCANNING. \n Sequence is:"                 # Nicely print the sequence
         for i in led_sequence:
@@ -272,6 +298,11 @@ def read_calibration_data(STORAGE_FILE):
         scan_type = (storage.readline().split()[1])
         max_light = float(storage.readline().split()[1])
         min_light = float(storage.readline().split()[1])
+
+    # SCALE COORDINATES DUE TO RESOLUTION DIFFERENCE BETWEEN CALIBRATION (1024x768) and scanning (2592x1944)
+    #m_led_coord_x = m_led_coord_x * 2592/1024
+    #m_led_coord_y = m_led_coord_y * 1944/768
+
 
     calibration_data = {"m_led_coord_x": m_led_coord_x,
                         "m_led_coord_y": m_led_coord_y,
@@ -336,9 +367,13 @@ def check_validity(led_sequence, seq_time):
 ### Main scanning software:
 def do_LED_scanning():
     STORAGE_FILE = "LED_sequence_calibration_data.txt"
-    setup()                                                         # Perform camera setup
 
-    calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
+    setup()
+
+    #ONLY USED FOR WINDOWS
+    #calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
+    calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files', STORAGE_FILE)
+
     print "Reading from: " + calibration_data_location
 
     if not exists(calibration_data_location):

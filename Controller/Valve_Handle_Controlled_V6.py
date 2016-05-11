@@ -1,39 +1,51 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')
+
 from SimpleCV import *
-import cv2
 from os.path import exists
 
+cam = None
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    if cam == None:
+        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera                                          # Only for laptop
     time.sleep(1)
 
 
-# Function to get the image from the camera
+# for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()                                            # Get image from camera
-    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    img = cam.getImage()
+    #img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     return img
 
 
 # Function to detect valve Handle:
 def HandleDetection(img, coords, data):
-    Std_constant = 4                                            # Describes how many std dev of value to include
+    #Std_constant = 4                                            # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = 150       #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 200                                       # Specify blobs colour distance threshold
-    blobs_min_size =  1000                                       # Specify minimum blobs size
+    blobs_threshold = 240                                       # Specify blobs colour distance threshold
+    blobs_min_size =  5000                                       # Specify minimum blobs size
                                                                 # Apply filters to the image
     filtered = img.hueDistance(color = data["avg_hue"],
-                               minsaturation = minsaturation,
+                               #minsaturation = minsaturation,
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     filtered = filtered.morphClose()                             # Perform morphOps
     all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
+
+    all_blobs.draw(width = 5)
+    filtered.show()
+
     if all_blobs > 1:                                           # If more than 1 blob found
         all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
@@ -115,7 +127,10 @@ def do_Valve_Handle_scanning():
 
     setup()                                                 # Perform camera setup
 
-    calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
+    #ONLY USED FOR WINDOWS
+    #calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
+    calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files', STORAGE_FILE)
+
     print "Reading from: " + calibration_data_location
 
     if not exists(calibration_data_location):
@@ -124,7 +139,7 @@ def do_Valve_Handle_scanning():
                "Calibration_files folder before running the scan")
         return "Error"                                      # If error occurs - only used when called by other software
 
-    n = 10                                                  # NUMBER OF SAMPLE IMAGES
+    n = 5                                                   # NUMBER OF SAMPLE IMAGES
     results = range(n)                                      # Create a list of results
 
 
@@ -139,6 +154,10 @@ def do_Valve_Handle_scanning():
     closed_average_hue = calibration_data['closed_average_hue']
     closed_average_sat = calibration_data['closed_average_sat']
     closed_std_sat = calibration_data['closed_std_sat']
+
+    # SCALE COORDINATES DUE TO RESOLUTION DIFFERENCE BETWEEN CALIBRATION (1024x768) and scanning (2592x1944)
+    #Handle_coord_x = Handle_coord_x * 2592/1024
+    #Handle_coord_y = Handle_coord_y * 1944/768
 
     Handle_coords = (Handle_coord_x, Handle_coord_y)
     colour_data = {"avg_hue": closed_average_hue,

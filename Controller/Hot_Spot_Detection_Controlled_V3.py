@@ -1,3 +1,7 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+
 from SimpleCV import *
 import numpy as np
 import cv2
@@ -21,22 +25,6 @@ def GetImage(raw_values):
     simplecv_img = Image(STORED_IMAGE_NAME)                 # Take the image from file as SIMPLECV image
     return simplecv_img
 
-
-# Function to get the confirmation from user
-def GetConfirmation(ConfirmationText):
-    while True:                                                     # Loop until valid response
-        print ConfirmationText                                      # Ask for confirmation
-        try:                                                        # Catch Index error in case of too fast response
-            userInput = raw_input()                                 # Check user input
-            userInput = userInput.lower()                           # Make it lower case
-            if userInput[0] == "y":                                 # Check if it is y, n, or something else
-                return True                                         # Return respective values
-            elif userInput[0] == "n":
-                return False
-        except(IndexError):                                         # In case of Index error (too fast response)
-            print "Something is wrong, try again."
-        else:
-            print "Incorrect value entered."
 
 
 # Shows the image until the button is pressed
@@ -66,11 +54,11 @@ def get_max_temperature_data(raw_values):
     max_temperature = temperature_from_raw(max_raw_pixel)           # Gets the temperature equivalent of max raw value
 
     ### DEBUG:
-    REPORT = "Max value is: " + str(max_raw_pixel) + \
-             " Max value locations are: X - " + str(max_pixel_locations_x) + \
-             " Y - " + str(max_pixel_locations_y) + \
-             ". Its equivalent to: " + str(max_temperature)
-    raw_input(REPORT)
+    # REPORT = "Max value is: " + str(max_raw_pixel) + \
+    #          " Max value locations are: X - " + str(max_pixel_locations_x) + \
+    #          " Y - " + str(max_pixel_locations_y) + \
+    #          ". Its equivalent to: " + str(max_temperature)
+    # raw_input(REPORT)
 
 
 
@@ -104,7 +92,7 @@ def iterate_for_max_temperature():
                                                                     # Initialize variable
 
     for i in range(0, ITERATIONS-1):                                # Repeat as required by Iterations
-
+        time.sleep(0.2)
         raw_values = get_raw_values()                               # Get camera output (raw values)
 
         max_temperature_new = get_max_temperature_data(raw_values)  # Get the maximum temperature from raw values
@@ -115,60 +103,60 @@ def iterate_for_max_temperature():
 
     return max_temperature_old                                      # Return the max temperature
 
+# MAIN SOFTWARE FUNCTION
+def do_hot_spot_detection():
+    # MAIN SOFTWARE:
+
+    START_MESSAGE = "Starting hot spot detection"
+    TEMPERATURE_THRESHOLD = 50                                      # Threshold temperature for warning
+    WARNING_MESSAGE = "WARNING. HOT SPOT DETECTED!"
+    REGULAR_MESSAGE = "Hottest spot: temperature of approximately %.1f at %i X and %i Y coordinates"
+
+    Warning = False                                                 # Initializing variables
+    scanning_done = False
+
+    while(not scanning_done):                                       # While not finished
+        print START_MESSAGE                                         # Inform user about scanning
+
+        max_temperature_information = iterate_for_max_temperature()
+                                                                    # Collect maximum temperature pixel data
+                                                                    #  from multiple images
+        ### TO SHOW THE IMAGE
+        #RADIUS = 2
+        #IMAGE_SCALAR = 3
+        #image = GetImage(max_temperature_information["raw_values"])
+
+        if max_temperature_information["max_temperature"] > TEMPERATURE_THRESHOLD:
+            Warning = True                                          # If max temp is larger than limit, flag the warning
+            print WARNING_MESSAGE                                   # Print message
 
 
-# MAIN SOFTWARE:
-# Initialisation:
-# Nothing to initialise.
+                                                                   # Print regular message either way
+        for i in range (0, len(max_temperature_information["max_pixel_locations_x"])):
+            print REGULAR_MESSAGE % (max_temperature_information["max_temperature"],
+                                     max_temperature_information["max_pixel_locations_x"][i],
+                                     max_temperature_information["max_pixel_locations_y"][i])
 
-### Detection:
-START_MESSAGE = "Starting hot spot detection"
-TEMPERATURE_THRESHOLD = 50                                      # Threshold temperature for warning
-WARNING_MESSAGE = "WARNING. HOT SPOT DETECTED!"
-REGULAR_MESSAGE = "Hottest spot: temperature of approximately %.1f at %i X and %i Y coordinates"
-AGAIN_TEXT = "Scanning is done. Scan again? Y/N"
-FINISHED_PROMPT = "Sequence finished."
 
-Warning = False                                                 # Initializing variables
-scanning_done = False
-
-while(not scanning_done):                                       # While not finished
-    print START_MESSAGE                                         # Inform user about scanning
-
-    max_temperature_information = iterate_for_max_temperature()
-                                                                # Collect maximum temperature pixel data
-                                                                #  from multiple images
-    ### TO SHOW THE IMAGE
-    RADIUS = 2
-    IMAGE_SCALAR = 3
-    image = GetImage(max_temperature_information["raw_values"])
-
-    if max_temperature_information["max_temperature"] > TEMPERATURE_THRESHOLD:
-        Warning = True                                          # If max temp is larger than limit, flag the warning
-        print WARNING_MESSAGE                                   # Print message
-
-                                                               # Print regular message either way
-    for i in range (0, len(max_temperature_information["max_pixel_locations_x"])):
-        print REGULAR_MESSAGE % (max_temperature_information["max_temperature"],
-                                 max_temperature_information["max_pixel_locations_x"][i],
-                                 max_temperature_information["max_pixel_locations_y"][i])
+            ### TO SHOW THE IMAGE
+            #image.dl().circle((max_temperature_information["max_pixel_locations_x"][i],
+            #                  max_temperature_information["max_pixel_locations_y"][i]),
+            #                  RADIUS, color=Color.RED)
 
 
         ### TO SHOW THE IMAGE
-        image.dl().circle((max_temperature_information["max_pixel_locations_x"][i],
-                          max_temperature_information["max_pixel_locations_y"][i]),
-                          RADIUS, color=Color.RED)
+        #image = image.applyLayers()
+        #image = image.scale(IMAGE_SCALAR)
+        #show_image_until_pressed(image)
 
+        if Warning:
+            return "Hot spot detected"
+        else:
+            return "No hot spots detected"
 
-    ### TO SHOW THE IMAGE
-    image = image.applyLayers()
-    image = image.scale (IMAGE_SCALAR)
-    show_image_until_pressed(image)
-
-    if GetConfirmation(AGAIN_TEXT):                             # Ask for another scan (REMOVE FOR REAL SOFTWARE)
-        continue
-    else:
+        return "Error - fault in detection sequence"
         scanning_done = True                                    # Finish the loop
 
-raw_input(FINISHED_PROMPT)                                      # Inform the user
-
+# If called by itself:
+if __name__ == '__main__':
+    print do_hot_spot_detection()

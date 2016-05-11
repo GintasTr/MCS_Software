@@ -1,3 +1,9 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
+
 from SimpleCV import *
 import cv2
 from Controller import Valve_Handle_Controlled_V6
@@ -5,16 +11,17 @@ from Controller import Valve_Handle_Controlled_V6
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera()
     time.sleep(1)
 
-
-# Function to get the image from the camera
+# for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()                                            # Get image from camera
-    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    #img = cam.getImage()
+    img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     return img
+
 
 # Shows the image until the button is pressed
 def show_image_until_pressed(img):

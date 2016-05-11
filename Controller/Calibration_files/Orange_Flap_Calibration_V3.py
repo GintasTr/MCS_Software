@@ -1,3 +1,9 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
+
 from SimpleCV import *
 import cv2
 from Controller import Orange_Flap_V3
@@ -5,16 +11,28 @@ from Controller import Orange_Flap_V3
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera()
     time.sleep(1)
 
 
 # for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()
-    img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    #img = cam.getImage()
+    img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     img = img.flipHorizontal()
     return img
+
+
+# Shows the image until the button is pressed
+def show_image_until_pressed(img):
+    disp = Display()                                        # Create a display
+    while disp.isNotDone():                                 # Loop until display is not needed anymore
+        if disp.mouseLeft:                                  # Check if left click was used on display
+            disp.done = True                                # Turn off Display
+        img.show()                                          # Show the image on Display
+    Display().quit()                                        # Exit the display so it does not go to "Not responding"
 
 # Function to check if flap is clearly seen in the image
 def IsFlapClear(flapImg):
@@ -72,16 +90,19 @@ def AcquireSlopeImage():  # Acquire slope flap image for calibration
     return flat_image
 
 def get_calibration_coordinates(flatImg):
+    CROP_LENGTH = 30
     print "In the shown image, left click on the orange flap in the image to calibrate" \
       " its colour and then Escape or Right click to turn off the image"
-    disp = Display()  # Create a display
+    disp = Display(flatImg.size())  # Create a display
+    flatImg.save(disp)
     while disp.isNotDone(): # Loop until display is not needed anymore
         flatImg.clearLayers()
         if disp.mouseLeft:  #   Show coords on screen
             mouse_coords = [disp.mouseX, disp.mouseY]
             text = "X:" + str(mouse_coords[0]) + " Y:" + str (mouse_coords[1])
             flatImg.dl().text(text, (mouse_coords[0] + 10, mouse_coords[1] + 10), color=Color.RED)
-            flatImg.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]], color = Color.RED, dimensions = [20,20])
+            flatImg.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]],
+                                           color = Color.RED, dimensions = [CROP_LENGTH,CROP_LENGTH])
         if disp.mouseRight: # Turn off the screen
             disp.done = True    # Turn off Display
         flatImg.save(disp)  # Show the image on Display
@@ -91,10 +112,10 @@ def get_calibration_coordinates(flatImg):
 
 # Function to find average values of colour (hue, sat, val)
 def ColorAveraging(flat_image, Calibration_coords):
-    crop_length = 20 #Adjust cropping area (x,y,w,h)
+    CROP_LENGTH = 30 # For laptop - 20 #Adjust cropping area (x,y,w,h)
     cropped = flat_image.crop(Calibration_coords[0],
-                              Calibration_coords[1], crop_length,
-                              crop_length, centered= True)
+                              Calibration_coords[1], CROP_LENGTH,
+                              CROP_LENGTH, centered= True)
     cropped_num = cropped.getNumpyCv2()
     cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)
     meanHue = np.mean(cropped_num[:,:,0])
@@ -120,7 +141,7 @@ def ColorAveraging(flat_image, Calibration_coords):
 
 # Calibration procedure
 def Flat_Calibration():
-    blobs_threshold_flat = 180
+    blobs_threshold_flat = 240 #170 on laptop
     blobs_min_size_flat = 1000
     flat_calibration_done = False
     while (not flat_calibration_done):  # Repeat until flat flap calibration is performed correctly
@@ -132,12 +153,10 @@ def Flat_Calibration():
         possible_flaps = filteredImage.findBlobs(threshval = blobs_threshold_flat, minsize=blobs_min_size_flat)
         if possible_flaps > 1:
             possible_flaps = possible_flaps.sortDistance(point =(Calibration_coords[0], Calibration_coords[1]))
-            for i in range(0, len(possible_flaps)):
-                filteredImage.dl().rectangle2pts(possible_flaps[i].topLeftCorner(),
-                                                 possible_flaps[i].bottomRightCorner(),Color.GREEN, width = 5)
-                filteredImage.dl().text("%s" %i, (possible_flaps[i].topLeftCorner()), color=Color.RED)
-                filteredImage.dl().circle(center = (Calibration_coords[0], Calibration_coords[1]), radius = 2,
-                                          color = Color.RED, width = 3, filled = True)
+            # for i in range(0, len(possible_flaps)):
+            #     filteredImage.dl().rectangle2pts(possible_flaps[i].topLeftCorner(),
+            #                                      possible_flaps[i].bottomRightCorner(),Color.GREEN, width = 5)
+            #     filteredImage.dl().text("%s" %i, (possible_flaps[i].topLeftCorner()), color=Color.RED)
         elif possible_flaps < 1:
             print "No possible flaps were found, starting calibration again"
             continue
@@ -169,7 +188,7 @@ def Flat_Calibration():
     return values
 
 def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
-    blobs_threshold_slope = 180
+    blobs_threshold_slope = 240 #170 on laptop
     blobs_min_size_slope = 1000
     slope_calibration_done = False
     while (not slope_calibration_done):
@@ -194,6 +213,7 @@ def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
             if disp.mouseLeft:  #   Check if left click was used on display
                 disp.done = True    # Turn off Display
             slope_image.show()  # Show the image on Display
+
         Display().quit()    # Exit the display so it does not go to "Not responding"
 
         while True: # Loop until valid response

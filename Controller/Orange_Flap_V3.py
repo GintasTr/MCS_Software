@@ -1,27 +1,34 @@
+# Scanning software has to be in "Controller folder"
+# Calibration files have to be in  "Controller folder/Calibration_files".
+
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
+
 from SimpleCV import *
-import cv2
 from os.path import exists
 
-
+cam = None
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    if cam == None:
+        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera                                          # Only for laptop
     time.sleep(1)
 
 
 # for image acquisition from camera (and flipping)
 def GetImage():
     img = cam.getImage()
-    img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()
+    #img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     return img
 
 
 # Function to apply colour distance filter
 def apply_filter(Calibration_values, img):
     #min_value = 30                                                  # If needed - minimal illumination of the object
-    minsaturation = (Calibration_values["AvSat"]/2)
+    minsaturation = 40  #(Calibration_values["AvSat"]/2)
     img = img.toHSV()
     Filtered = img.hueDistance(color = Calibration_values["AvHue"],
                                minsaturation = minsaturation
@@ -45,6 +52,11 @@ def read_calibration_data(STORAGE_FILE):
         AvSat = float(storage.readline().split()[1])
         FlatWHRatio = float(storage.readline().split()[1])
         SlopeWHRatio = float(storage.readline().split()[1])
+
+    # SCALE COORDINATES DUE TO RESOLUTION DIFFERENCE BETWEEN CALIBRATION (1024x768) and scanning (2592x1944)
+    #mouseX = mouseX * 2592/1024
+    #mouseY = mouseY * 1944/768
+
 
     calibration_data = {"mouseX": mouseX,
                         "mouseY": mouseY,
@@ -84,16 +96,19 @@ def calculate_average(results):
 
 
 # Main function:
-def do_Orange_Flap_scanning():
+def do_Orange_Flap_scanning(): ## DEBUGING TESTING
     STORAGE_FILE = "Orange_flap_calibration_data.txt"
-    blobs_threshold_main = 180          #thresholds for calibration blob detection and main process blob detection
-    blobs_min_size_main = 1000
+    blobs_threshold_main = 240           # 170 on laptop.
+                                         # thresholds for calibration blob detection and main process blob detection
+    blobs_min_size_main = 1000          # 1000 On laptop
     NUMBER_OF_ITERATIONS = 5
     results = range(NUMBER_OF_ITERATIONS)                  # Initialise results list
+
     setup()
 
-
-    calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
+    #ONLY USED FOR WINDOWS
+    #calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
+    calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files', STORAGE_FILE)
     print "Reading from: " + calibration_data_location
 
     if not exists(calibration_data_location):
@@ -104,7 +119,8 @@ def do_Orange_Flap_scanning():
 
     flat_data = read_calibration_data(calibration_data_location)          # Extract calibration data
     slope_data = flat_data.pop("SlopeWHRatio")
-
+    threshold_ratio = (flat_data["FlatWHRatio"]+ slope_data) / 2
+    print "threshold ratio is:", threshold_ratio
     ## Main loop:
     for i in range(0, len(results)):
         Img = GetImage()
@@ -117,15 +133,16 @@ def do_Orange_Flap_scanning():
             results[i] = "Error - No flaps found"
             continue
         possible_flaps.draw(width=3)
-        filtered.show()
+        #filtered.show()                                                # Too slow for RPI
         flap = possible_flaps[0]
         #Img.dl().rectangle2pts(flap.topLeftCorner(), flap.bottomRightCorner(),Color.RED, width = 5) #FOR FEEDBACK ONLY
         #Img.show()  #FOR FEEDBACK ONLY
-        detectedRatio = flap.width()/flap.height()
-        if detectedRatio > (flat_data["FlatWHRatio"]+ slope_data) / 2:
+        detectedRatio = float(flap.width())/float(flap.height())
+        print "Detected ratio is:", detectedRatio
+        if detectedRatio > threshold_ratio:
             results[i] = "Slope position"
             print "Flap is in slope position"
-        elif detectedRatio <= (flat_data["FlatWHRatio"]+ slope_data) / 2:
+        elif detectedRatio <= threshold_ratio:
             results[i] = "Flat position"
             print "Flap is in flat position"
         else:

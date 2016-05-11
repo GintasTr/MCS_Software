@@ -1,50 +1,61 @@
 # Scanning software has to be in "Controller folder"
 # Calibration files have to be in  "Controller folder/Calibration_files".
 
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 
 from SimpleCV import *
-import cv2
 from os.path import exists
-from sys import argv
 
+cam = None
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    if cam == None:
+        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera                                          # Only for laptop
     time.sleep(1)
 
 
-# Function to get the image from the camera
+# for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()                                            # Get image from camera
-    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    img = cam.getImage()
+    #img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     return img
 
 
 # Function to detect valve Handle:
 def ObjectDetection(img, coords, data, object_area):
-    Std_constant = 5                                            # Describes how many std dev of value to include
+    #Std_constant = 5                                            # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    min_area = object_area/4                                    # Derive minimum and maximum area objects can take
+    #min_area = object_area/4                                    # Derive minimum and maximum area objects can take
     max_area = object_area*4
-    minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = 150         #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 100                                       # Specify blobs colour distance threshold
+    blobs_threshold = 230 #170 on laptop                        # Specify blobs colour distance threshold
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
                                minsaturation = minsaturation,
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    filtered = filtered.morphClose()                             # Perform morphOps TODO: look for better options
-    all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize= min_area, maxsize = max_area )
+    filtered = filtered.morphClose()                            # Perform morphOps TODO: look for better options
+    all_blobs = filtered.findBlobs(threshval = blobs_threshold,
+                                   #minsize= min_area,
+                                   maxsize = max_area )
     if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
+        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
         return "No blobs found"
-    foreign_object = all_blobs[0]                                       # foreign_object is the closes blob to the click
+    foreign_object = all_blobs[0]                               # foreign_object is the closes blob to the click
+
+    foreign_object.draw() #DEBUGGING TESTING
+    filtered.show()
+
+    print "Object height is:", foreign_object.height()
+
     return foreign_object
 
 
@@ -104,6 +115,7 @@ def calculate_average(results):
             Possibilities["Object is present"] += 1
         else:
             print "Something strange happened." # If none of the results fit (Not possible)
+            return "Error"
     Final_result = max(Possibilities, key=Possibilities.get)
                                                 # Get the max value of the dictionary
     return Final_result
@@ -115,14 +127,15 @@ def detect_foreign_object(calibration_name):
 
     NAME_OF_FOREIGN_OBJECT = calibration_name               # NAME OF THE FOREIGN OBJECT WHICH IS DETECTED.
                                                             # ALSO NAME OF THE FILE WITH CALIBRATION DATA
-
-    fn = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', NAME_OF_FOREIGN_OBJECT)
+    #ONLY USED FOR WINDOWS
+    #fn = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', NAME_OF_FOREIGN_OBJECT)
+    fn = os.path.join(os.path.dirname(__file__), 'Calibration_files', NAME_OF_FOREIGN_OBJECT)
 
     NAME_OF_CALIBRATION_FILE = fn + ".txt"
 
 
     print "Scanning for " + NAME_OF_CALIBRATION_FILE        # Prompt the user which object is being detected
-    n = 10                                                  # NUMBER OF SAMPLE IMAGES
+    n = 5                                                   # NUMBER OF SAMPLE IMAGES
     results = range(n)                                      # Create a list of results
 
     if not exists(NAME_OF_CALIBRATION_FILE):
@@ -144,6 +157,11 @@ def detect_foreign_object(calibration_name):
     object_average_hue = calibration_data['object_average_hue']
     object_average_sat = calibration_data['object_average_sat']
     object_std_sat = calibration_data['object_std_sat']
+
+    # SCALE COORDINATES DUE TO RESOLUTION DIFFERENCE BETWEEN CALIBRATION (1024x768) and scanning (2592x1944)
+    #m_led_coord_x = m_led_coord_x * 2592/1024
+    #m_led_coord_y = m_led_coord_y * 1944/768
+    #object_area = object_area * 6
 
     object_coords = (object_coord_x, object_coord_y)
     colour_data = {"avg_hue": object_average_hue,
@@ -170,5 +188,5 @@ def detect_foreign_object(calibration_name):
 
 # If called by itself, just so that it does not show error when something is returned
 if __name__ == '__main__':
-    result = detect_foreign_object("Green_breadboard")
+    result = detect_foreign_object("Red_object")
     print "Result returned from the module: " + result

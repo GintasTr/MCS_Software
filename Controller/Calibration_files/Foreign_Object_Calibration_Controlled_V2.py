@@ -1,6 +1,9 @@
 # Scanning software has to be in "Controller folder"
 # Calibration files have to be in  "Controller folder/Calibration_files".
 
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
+
 
 from SimpleCV import *
 import cv2
@@ -8,15 +11,15 @@ import cv2
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera()
     time.sleep(1)
 
-
-# Function to get the image from the camera
+# for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()                                            # Get image from camera
-    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    #img = cam.getImage()
+    img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     return img
 
 # Shows the image until the button is pressed
@@ -74,9 +77,9 @@ def RequestConfirmedImage(RequestText, ConfirmationText1, ConfirmationText2):
 
 # Function for getting objectCoords:
 def getObjectCoords(img, RequestText):
-    mouse_rectangle_dimensions = 10
+    CROP_DIMENSIONS = 10
     print RequestText                                           # Ask user to click on display
-    disp = Display()                                            # Create a display
+    disp = Display(img.size())                                  # Create a display
     while disp.isNotDone():                                     # Loop until display is not needed anymore
         img.clearLayers()                                       # Clear old drawings
         if disp.mouseLeft:
@@ -85,7 +88,7 @@ def getObjectCoords(img, RequestText):
             img.dl().text(text, (mouse_coords[0] + 10, mouse_coords[1] + 10), color=Color.RED)
             img.dl().centeredRectangle(center = [mouse_coords[0], mouse_coords[1]],
                                        color = Color.RED,
-                                       dimensions = [mouse_rectangle_dimensions,mouse_rectangle_dimensions])
+                                       dimensions = [CROP_DIMENSIONS,CROP_DIMENSIONS])
         if disp.mouseRight:                                     # If right clicked
             disp.done = True                                    # Turn off Display
         img.save(disp)                                          # Show the image on Display
@@ -103,19 +106,20 @@ def correct_blob_confirmation(handle, img):
     print TEXT_WHILE_IMAGE                                       # Print a message
     show_image_until_pressed(test_img)                           # Show image until pressed
     correct_blob = GetConfirmation(QUESTION_TO_ASK)              # Ask for confirmation
+    img.save("ForeignObject.jpg")   # TESTING DEBUGGING
     return correct_blob
 
 
 # Function to detect the foreign object for the first time:
 def InitialObjectDetection(img, coords, data):
-    Std_constant = 5                                            # Describes how many std dev of value to include
+    #Std_constant = 5                                           # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = (data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = 150 #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 100                                       # Specify blobs colour distance threshold
-    blobs_min_size =  1000                                      # Specify minimum blobs size
+    blobs_threshold = 230  #170 on laptop                       # Specify blobs colour distance threshold
+    blobs_min_size =  10                                        # Specify minimum blobs size
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
                                minsaturation = minsaturation,
@@ -124,7 +128,7 @@ def InitialObjectDetection(img, coords, data):
     filtered = filtered.morphClose()                            # Perform morphOps TODO: look for better options
     all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
     if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
+        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
         return "No blobs found"
     m_valve = all_blobs[0]                                     # m_valve is the closes blob to the click
@@ -133,7 +137,7 @@ def InitialObjectDetection(img, coords, data):
 
 # Function to get the colour data of small area around certain point
 def GetColourData(img, coords):
-    CROP_SIZE = 10                                              # Area around the point to be evaluated (square width)
+    CROP_SIZE = 10    #10 on laptop                             # Area around the point to be evaluated (square width)
 
     cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
                        coords[1], CROP_SIZE,

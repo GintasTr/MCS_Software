@@ -1,6 +1,9 @@
 # Scanning software has to be in "Controller folder"
 # Calibration files have to be in  "Controller folder/Calibration_files".
 
+import sys                                                  # Only for RPI
+sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
+
 from SimpleCV import *
 import cv2
 from Controller import LED_Sequence_Controlled_V6
@@ -8,15 +11,16 @@ from Controller import LED_Sequence_Controlled_V6
 # prepares, selects the camera
 def setup():
     global cam
-    cam = Camera()
+    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera()
     time.sleep(1)
 
 
-# Function to get the image from camera
+# for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()                                            # Get image from camera
-    img = cam.getImage()                                            # ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipHorizontal()                                      # Flip image (has to be tested on PI)
+    #img = cam.getImage()
+    img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    img = img.flipVertical()
     return img
 
 
@@ -71,9 +75,9 @@ def GetConfirmation(ConfirmationText):
 
 # Function for getting mLedCoords:
 def GetClickCoords(img, RequestText):
-    RECT_DIMENSIONS = 30
+    RECT_DIMENSIONS = 5
     print RequestText                                           # Ask user to click on display
-    disp = Display()                                            # Create a display
+    disp = Display(img.size())                                  # Create a display
     while disp.isNotDone():                                     # Loop until display is not needed anymore
         img.clearLayers()                                       # Clear old drawings
         if disp.mouseLeft:
@@ -107,14 +111,11 @@ def ConfirmMainLed(img, blob, confirmationText, confirmationText2):
 
 # Function to get the colour data of small area around certain point
 def GetColourData(img, coords):
-    BLOB_BRIGHTNESS_LIMIT = 230
     #CROPPING_AROUND_BLOB_SCALAR = 3
-    CROP_SIZE = 30                                              # Area around the point to be evaluated (square width)
+    CROP_SIZE = 5                                              # Area around the point to be evaluated (square width)
     cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
                        coords[1], CROP_SIZE,
                        CROP_SIZE, centered= True)
-    show_image_until_pressed(cropped)
-
     cropped_num = cropped.getNumpyCv2()                         # Convert image to numpy array compatible with openCV
     cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)  # Convert image to HSV colour scheme with openCV
 
@@ -123,9 +124,9 @@ def GetColourData(img, coords):
     stdSat = np.std(cropped_num[:,:,1])                             # Slice the NumPy array to get the std Sat
     # minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
     # meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
-    # print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
-    # print meanSat, "- mean Sat"
-    # print stdSat, "- std Sat"
+    print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
+    print meanSat, "- mean Sat"
+    print stdSat, "- std Sat"
     # print minSat, "- min Sat"
     # print meanValue, " - min Val"
 
