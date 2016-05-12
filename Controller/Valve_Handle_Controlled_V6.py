@@ -24,6 +24,19 @@ def GetImage():
     img = img.flipVertical()
     return img
 
+# Shows the image until the button is pressed
+def show_image_until_pressed(img):
+    disp = Display()                                        # Create a display
+    while disp.isNotDone():                                 # Loop until display is not needed anymore
+        if disp.mouseLeft:                                  # Check if left click was used on display
+            disp.done = True                                # Turn off Display
+        img.show()                                          # Show the image on Display
+    Display().quit()                                        # Exit the display so it does not go to "Not responding"
+
+# Briefly flashes the image
+def show_image_briefly(img):
+    img.show()                                              # Show the image on Display
+
 
 # Function to detect valve Handle:
 def HandleDetection(img, coords, data):
@@ -33,8 +46,8 @@ def HandleDetection(img, coords, data):
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     minsaturation = 150       #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 240                                       # Specify blobs colour distance threshold
-    blobs_min_size =  5000                                       # Specify minimum blobs size
+    blobs_threshold = 245                                       # Specify blobs colour distance threshold
+    blobs_min_size =  100                                       # Specify minimum blobs size
                                                                 # Apply filters to the image
     filtered = img.hueDistance(color = data["avg_hue"],
                                #minsaturation = minsaturation,
@@ -43,8 +56,8 @@ def HandleDetection(img, coords, data):
     filtered = filtered.morphClose()                             # Perform morphOps
     all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
 
-    all_blobs.draw(width = 5)
-    filtered.show()
+    # all_blobs.draw(width = 5)     #TESTING
+    # show_image_until_pressed(filtered)
 
     if all_blobs > 1:                                           # If more than 1 blob found
         all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
@@ -169,7 +182,7 @@ def do_Valve_Handle_scanning():
         result = scanning_procedure(Handle_coords,colour_data)
         processed_result = process_a_result(result, closed_angle_stored, open_angle_stored)
         results[i] = processed_result
-        print results[i]
+        print results[i]        # TESTING
 
     final_result = calculate_average(results)
 

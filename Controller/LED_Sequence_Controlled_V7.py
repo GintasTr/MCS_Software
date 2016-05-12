@@ -57,37 +57,88 @@ def debug_pixel_value(img):
 
 
 
+#total_time = []                         #TIMING
+# capture_time = []
+# detection_time = []
+# recording_time = []
+#
+# detection_mainLED_time = []
+# detection_cropping_time = []
+# detection_flashingLED_time = []
+#
+# detection_mainLED_filtering_time = []
+# detection_mainLED_detecting_time = []
+# detection_mainLED_sorting_time = []
+
+
+
+
 # Function to detect the main LED:
 def MainLedDetection(img, coords, data):
     # STD_CONSTANT = 5                                          # Define how many standard deviations of saturation to include
-    MIN_BRIGHTNESS = 150 #240 on laptop                         # Minimal illumination threshold
-    BLOBS_BRIGHTNESS_THRESHOLD = 240  #230 on laptop            # Define how close to the calibrated colour blobs have to be
-    BLOBS_MAX_SIZE = 5000                                       # Specify max size of blob
-    BLOBS_MIN_SIZE = 10                                         # Specify min size of blob
+    #MIN_BRIGHTNESS = 100 #240 on laptop                         # Minimal illumination threshold
+    #BLOBS_MAX_SIZE = 5000                                       # Specify max size of blob
+    #BLOBS_MIN_SIZE = 10                                         # Specify min size of blob
 
-    img = img.toHSV()                                           # Convert image to HSV colour space
-    # minsaturation = (data["avg_sat"]- STD_CONSTANT * data["std_sat"])
-                                                                # Derive minimum saturation. As a reminder: hsv_data =
-                                                                # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-                                                                # Apply filters to the image TODO: calibrate or change the filtering
-    filtered = img.hueDistance(color = data["avg_hue"],
-                              minvalue = MIN_BRIGHTNESS)
+    BLOBS_BRIGHTNESS_THRESHOLD = 220  #230 on laptop            # Define how close to the calibrated colour blobs have to be
+
+    # COLOUR FILTER. NOT USEFULL ON RPI AND WITH LONG DISTANCES
+    # img = img.toHSV()                                           # Convert image to HSV colour space
+    # # minsaturation = (data["avg_sat"]- STD_CONSTANT * data["std_sat"])
+    #                                                             # Derive minimum saturation. As a reminder: hsv_data =
+    #                                                             # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
+    #                                                             # Apply filters to the image TODO: calibrate or change the filtering
+    # filtered = img.hueDistance(color = data["avg_hue"],
+    #                           minvalue = MIN_BRIGHTNESS
+    #                            )
+
+
+    #detection_mainLED_filtering_time_start = time.time() #TIMING
+
+
+    filtered = img.binarize(thresh = BLOBS_BRIGHTNESS_THRESHOLD)
+
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    filtered = filtered.morphOpen()                             # Perform morphOps
+    #filtered = filtered.morphOpen()                             # Perform morphOps
+
+    filtered = filtered.dilate(1)
+
+
+    #detection_mainLED_filtering_time.append((time.time() - detection_mainLED_filtering_time_start))  # TIMINGS
+
+
+    #detection_mainLED_detecting_time_start = time.time() #TIMING
+
+
+    #debug_pixel_value(filtered)# TESTING DEBUGGING
+
+    #show_image_briefly(filtered)
                                                                 # Look for blobs
-    #debug_pixel_value(filtered)                                 # DEBUGGING FUNCTION
     all_blobs = filtered.findBlobs(
                                 #maxsize=BLOBS_MAX_SIZE,
-                                #minsize= BLOBS_MIN_SIZE,
-                                threshval = BLOBS_BRIGHTNESS_THRESHOLD )
-    show_image_until_pressed(filtered) #TESTING
+                                #minsize= 1,                    # Only for low resolutions
+                                #threshval = BLOBS_BRIGHTNESS_THRESHOLD
+                                    )
+
+
+    #detection_mainLED_detecting_time.append((time.time() - detection_mainLED_detecting_time_start))  # TIMINGS
+
+    #detection_mainLED_sorting_time_start = time.time() #TIMING
+
+
     if all_blobs > 1:                                           # If more than 1 blob found
         all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:                                         # If none blobs found
         # print "No blobs found"                                # Print and return that no blobs were found. Not needed
         return "No blobs found"
-    # show_image_until_pressed(filtered)                        # USED FOR DEBUGGING
+
     m_led = all_blobs[0]                                        # m_led is the closest blob to mouse click
+
+
+
+    #detection_mainLED_sorting_time.append((time.time() - detection_mainLED_sorting_time_start))  # TIMINGS
+
+
     return m_led
 
 
@@ -111,15 +162,33 @@ def GetLight(img, coords, hsv_data, dist):
     return light_value
 
 
+
+
 # Function to get number_of_blobs
 def BlobsNumber(img, coords, hsv_data, dist):
-    MINIMUM_BLOB_SIZE = 100
+    #MINIMUM_BLOB_SIZE = 100
     dist_scalar = 2.5                                           # Margin of distance to include both LEDs
     crop_length = int(round(dist_scalar*dist))
+
+
+
+    #detection_mainLED_time_start = time.time()  # TIMING
+
+
+
     main_blob = MainLedDetection(img,coords,hsv_data)           # Get main led blob. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
+
+    #detection_mainLED_time.append((time.time() - detection_mainLED_time_start))  # TIMINGS
+
+
     if main_blob == "No blobs found":                           # Check whether blobs were found
         return "No blobs found"                                 # If no blobs found return string
+
+
+    #detection_cropping_time_start = time.time() #TIMING
+
+
     blob_coordinates = main_blob.coordinates()                  # Main blob coordinates
     cropped = img.crop(blob_coordinates[0],                     # Crop around the main blob
                         blob_coordinates[1], crop_length,
@@ -133,15 +202,26 @@ def BlobsNumber(img, coords, hsv_data, dist):
     cropped = cropped.erode(iterations = 1)                     # FOR BIGGER RANGE
     cropped = cropped.dilate(iterations = 1)                      # If from close - change to 1
 
-    #cropped.show()
-    all_blobs = cropped.findBlobs(minsize = MINIMUM_BLOB_SIZE)
+
+    #detection_cropping_time.append((time.time() - detection_cropping_time_start))  # TIMINGS
+
+
+    #detection_flashingLED_time_start = time.time() #TIMING
+
+    all_blobs = cropped.findBlobs(
+                                #minsize = 1        # Only for low resolutions
+                                 )
     if all_blobs<1:                           # Check whether blobs were found
         return "No blobs found"
                                                                 # Find ALL blobs in the image
     #all_blobs.draw(width=3)                                     # For debugging - draw all blobs
-    #cropped.show()
-    #show_image_briefly(cropped)                                # DEBUGGING
+    show_image_briefly(cropped)                                # DEBUGGING
     number_of_blobs = len(all_blobs)                            # Return the number of found blobs
+
+
+    #detection_flashingLED_time.append((time.time() - detection_flashingLED_time_start))  # TIMINGS
+
+
     return number_of_blobs
 
 
@@ -169,83 +249,100 @@ def SequenceScanning(cal_data):
                    "avg_sat": avg_sat,
                    "std_sat": std_sat}
 
+    # IF SCANNING ACCORDING TO ILLUMINATION LEVEL - ALMOST NEVER HAPPENS DUE TO LARGE DISTANCE
     if scan_type == "illumination level":            # Define the threshold between ON/OFF LED
         light_threshold = (min_light+max_light)/2
+
     scan_done = False                                            # Initiate scanning loop
-    start1 = time.clock()                                        # Mark the start scanning
-    elapsed_time1 = time.clock() - start1                        # Obtain value for checking loop to not show error
+    start1 = time.time()                                        # Mark the start scanning
+    elapsed_time1 = time.time() - start1                        # Obtain value for checking loop to not show error
     while not scan_done:                                         # Perform while scanning is not done
         led_sequence = []                                        # Create empty list to store sequence
         live_img = GetImage()                                    # Get live camera image
         if MainLedDetection(live_img ,m_led_coords,m_led_data) == "No blobs found":
                                                                  # Check if there is a main LED
-            elapsed_time1 = time.clock() - start1                # Check how long main LED is not detected
+            elapsed_time1 = time.time() - start1                # Check how long main LED is not detected
             if elapsed_time1 > FIRST_DETECTION_LIMIT:            # If it is longer than limit
                 return "Error - first LED not found"             # Return error
             continue                                             # Start from the top of the loop
         print "LED found, starting sequence scanning"            # Notify user about sequence scanning
-        start2 = time.clock()                                    # Mark the start of sequence
+        start2 = time.time()                                    # Mark the start of sequence
         elapsed_old = 0                                          # Initialise for delta T acquisition
         previous_state = "Unknown"                               # Initialise previous LED state variable
-        elapsed_time = time.clock() - start2                     # Obtain value for while loop to not show error
+        elapsed_time = time.time() - start2                     # Obtain value for while loop to not show error
+
+        #total_time_start = time.time()#TIMINGS
+
         while(elapsed_time < seq_time):              # Loop while sequence is not finished
 
-            start3 = time.clock()#TIMINGS
+
+            #print "TOTAL SEQUENCE TIME: %.4f" % (time.time() - total_time_start) #TIMINGS
+            #total_time.append((time.time() - total_time_start))  # TIMINGS
+
+            #total_time_start = time.time()#TIMINGS
+            #capture_time_start = time.time()#TIMINGS
+
 
             live_img = GetImage()                                # Obtain live image
 
-            print "time capturing:", (time.clock() - start3)#TIMINGS
+            #capture_time.append((time.time() - capture_time_start))  # TIMINGS
 
             if scan_type == "illumination level":        # If scanning is performed based on illumination
                 light_level = GetLight(live_img, m_led_coords, m_led_data, dist_led)
                 if light_level == "No blobs found":                  # If no blobs found
-                    elapsed_time = (time.clock() - start2)            # Get elapsed time for the list
+                    elapsed_time = (time.time() - start2)            # Get elapsed time for the list
                     delta_t = elapsed_time - elapsed_old              # Calculate Delta T
                     elapsed_old = elapsed_time                        # Update Old time for delta T calculations
                     led_sequence.append("No blobs found at %.4f. Delta T from last state: %.4f"
-                                        % (round(elapsed_time,4), round(delta_t,4)))
+                                        % (elapsed_time, delta_t))
                     print ("No blobs found at %.4f. Delta T from last state: %.4f"
-                                        % (round(elapsed_time,4), round(delta_t,4)))
+                                        % (elapsed_time, delta_t))
                     continue
                 if light_level > light_threshold:                    # Check if LED is ON of OFF
                     led_state = "ON"
                 else:
                     led_state = "OFF"
                 if previous_state == led_state:                      # If current state is the same as previous, do nothing
-                    elapsed_time = (time.clock() - start2)            # Update elapsed time for the loop
+                    elapsed_time = (time.time() - start2)            # Update elapsed time for the loop
                     continue                                         # Loop again
                 previous_state = led_state                           # Update the previous state
-                elapsed_time = (time.clock() - start2)               # Calculate elapsed time
+                elapsed_time = (time.time() - start2)               # Calculate elapsed time
                 delta_t = elapsed_time - elapsed_old                 # Calculate Delta T
                 elapsed_old = elapsed_time                           # Update Old time for delta T calculations
                                                                      # Add new values to sequence list
                 led_sequence.append("LED state: %s at %.4f. Delta T from last state: %.4f" %
-                                    (led_state, round(elapsed_time,4), round(delta_t,4)))
+                                    (led_state, elapsed_time, delta_t))
                                                                      # Print new values for debugging
                 print "LED state: %s at %.4f. Delta T from last state: %.4f" \
-                      % (led_state, round(elapsed_time,4), round(delta_t,4))
+                      % (led_state, elapsed_time, delta_t)
+
+
 
             if scan_type == "number_of_blobs":           # If scanning is performed based on number_of_blobs
 
-                start3 = time.clock()#TIMINGS
+                #detection_time_start = time.time()#TIMINGS
+
 
                 number_of_blobs = BlobsNumber(live_img, m_led_coords, m_led_data, dist_led)
 
-                print "time blobbing:", (time.clock() - start3)#TIMINGS
 
-                start3 = time.clock()#TIMINGS
+                #detection_time.append((time.time() - detection_time_start))  # TIMINGS
+
+                #recording_time_start = time.time()#TIMINGS
 
 
                 if number_of_blobs == "No blobs found":              # If no blobs were found
-                    elapsed_time = (time.clock() - start2)            # Get elapsed time for the list
+                    elapsed_time = (time.time() - start2)            # Get elapsed time for the list
                     delta_t = elapsed_time - elapsed_old              # Calculate Delta T
                     elapsed_old = elapsed_time                        # Update Old time for delta T calculations
                     led_sequence.append("No blobs found at %.4f.  Delta T from last state: %.4f"
-                                        % (round(elapsed_time,4), round(delta_t,4)))
+                                        % (elapsed_time, delta_t))
                     print ("No blobs found at %.4f. Delta T from last state: %.4f"
-                                        % (round(elapsed_time,4), round(delta_t,4)))
+                                        % (elapsed_time, delta_t))
 
-                    print "time recording:", (time.clock() - start3)#TIMINGS
+
+                    #recording_time.append((time.time() - recording_time_start))  # TIMINGS
+
 
                     continue                                         # Start from the top of the loop
 
@@ -254,26 +351,77 @@ def SequenceScanning(cal_data):
                 else:
                     led_state = "OFF"
                 if previous_state == led_state:                      # If current state is the same as previous, do nothing
-                    elapsed_time = (time.clock() - start2)            # Update elapsed time for the loop
+                    elapsed_time = (time.time() - start2)            # Update elapsed time for the loop
 
-                    print "time recording:", (time.clock() - start3)#TIMINGS
+
+                    #recording_time.append((time.time() - recording_time_start))  # TIMINGS
 
                     continue                                         # Loop again
                 previous_state = led_state                           # Update the previous state
-                elapsed_time = (time.clock() - start2)                # Calculate elapsed time
+                elapsed_time = (time.time() - start2)                # Calculate elapsed time
                 delta_t = elapsed_time - elapsed_old                 # Calculate Delta T
                 elapsed_old = elapsed_time                           # Update Old time for delta T calculations
                                                                      # Add new values to sequence list
                 led_sequence.append("LED state: %s at %.4f. Delta T from last state: %.4f" %
-                                    (led_state, round(elapsed_time,4), round(delta_t,4)))
+                                    (led_state, elapsed_time, delta_t))
                                                                      # Print new values for debugging
                 print "LED state: %s at %.4f. Delta T from last state: %.4f" % \
-                      (led_state, round(elapsed_time,4), round(delta_t,4))
+                      (led_state, elapsed_time, delta_t)
 
-                print "time recording:", (time.clock() - start3)#TIMINGS
+
+
+                #recording_time.append((time.time() - recording_time_start))  # TIMINGS
+
+
+
+
+        # with open("total_time.txt", "w") as storage: #TIMINGS
+        #       for item in total_time:                 #TIMINGS
+        #           storage.write("%s\n" % item)                #TIMINGS
+        #
+        #
+        # with open("capture_time.txt", "w") as storage:                #TIMINGS
+        #      for item in capture_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        # with open("detection_time.txt", "w") as storage:                #TIMINGS
+        #      for item in detection_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        # with open("recording_time.txt", "w") as storage:                #TIMINGS
+        #      for item in recording_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        #
+        # with open("detection_mainLED_time.txt", "w") as storage:                #TIMINGS
+        #      for item in detection_mainLED_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        # with open("detection_cropping_time.txt", "w") as storage:                #TIMINGS
+        #      for item in detection_cropping_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        # with open("detection_flashingLED_time.txt", "w") as storage:                #TIMINGS
+        #      for item in detection_flashingLED_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        #
+        # with open("detection_mainLED_filtering_time.txt", "w") as storage:                #TIMINGS
+        #      for item in detection_mainLED_filtering_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        # with open("detection_mainLED_detecting_time.txt", "w") as storage:                #TIMINGS
+        #      for item in detection_mainLED_detecting_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+        #
+        # with open("detection_mainLED_sorting_time.txt", "w") as storage:                #TIMINGS
+        #      for item in detection_mainLED_sorting_time:                #TIMINGS
+        #          storage.write("%s\n" % item)                #TIMINGS
+
 
                                                                  # Notify user about end of scanning
         print "END OF SCANNING. \n Sequence is:"                 # Nicely print the sequence
+
         for i in led_sequence:
             print i
         #again = GetConfirmation("Scan again? Y/N")               # Ask if scan again
@@ -326,7 +474,6 @@ def get_average_period(led_sequence):
         if led_sequence[i].split()[0] !="No":                       # Only if first word is not equal to "No"
             sum += float(led_sequence[(i+1)].split()[-1])           # Sum the Delta T of next item
                                                                     # to get how long the state was constant
-            print "Time LED was detected is: ", sum                                   # For debugging
     average = sum/len(led_sequence)                                 # Calculate average frequency
     print "Average period is:", average                             # For debugging
     return average
@@ -356,7 +503,6 @@ def check_validity(led_sequence, seq_time):
     for i in range(0, (len(led_sequence)-1)):                     # For whole length of sequence
         if led_sequence[i].split()[0] == "No":                    # If first word in sequence member is "No"
             sum += float(led_sequence[(i+1)].split()[-1])         # Sum the Delta T of next items
-    print "Time main LED was not detected is: ", sum
     if sum < VALIDITY_THRESHOLD:
         return False                                              # Results are valid
     else:

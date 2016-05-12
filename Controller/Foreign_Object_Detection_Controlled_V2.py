@@ -31,7 +31,7 @@ def ObjectDetection(img, coords, data, object_area):
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    #min_area = object_area/4                                    # Derive minimum and maximum area objects can take
+    min_area = object_area/4                                    # Derive minimum and maximum area objects can take
     max_area = object_area*4
     minsaturation = 150         #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
@@ -50,9 +50,6 @@ def ObjectDetection(img, coords, data, object_area):
     elif all_blobs < 1:
         return "No blobs found"
     foreign_object = all_blobs[0]                               # foreign_object is the closes blob to the click
-
-    foreign_object.draw() #DEBUGGING TESTING
-    filtered.show()
 
     print "Object height is:", foreign_object.height()
 

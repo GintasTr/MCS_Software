@@ -78,9 +78,9 @@ def RequestConfirmedImage(RequestText, ConfirmationText1, ConfirmationText2):
 
 # Function for getting ValveCoords:
 def GetValveCoords(img, RequestText):
-    SQUARE_DIMENSIONS = 10
+    SQUARE_DIMENSIONS = 8
     print RequestText                                           # Ask user to click on display
-    disp = Display()                                            # Create a display
+    disp = Display(img.size())                                  # Create a display
     while disp.isNotDone():                                     # Loop until display is not needed anymore
         img.clearLayers()                                       # Clear old drawings
         if disp.mouseLeft:
@@ -111,7 +111,7 @@ def correct_blob_confirmation(handle, img):
 
 # Function to get the colour data of small area around certain point
 def GetColourData(img, coords):
-    CROP_SIZE = 10                                              # Area around the point to be evaluated (square width)
+    CROP_SIZE = 8                                              # Area around the point to be evaluated (square width)
 
     cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
                        coords[1], CROP_SIZE,
@@ -167,7 +167,8 @@ def get_handle_data_Closed():
     USER_REQUEST = "Please put the camera as it would be during the ispection of the CLOSED valve handle."
     REQUEST_WHILE_IMAGE_SHOWN = "This is the image taken. Close the image by right clicking on it or pressing escape"
     CONFIRMATION_QUESTION = "Was the coolant valve handle clearly seen in the CLOSED position? Y/N"
-    COORDINATES_REQUEST = "Pease right click on the valve handle to calibrate its coordinates"
+    COORDINATES_REQUEST = "Pease left click on the valve handle to calibrate its " \
+                          "coordinates and then right click to exit"
 
 
     closed_data_acquired = True
@@ -219,9 +220,14 @@ def get_handle_data_Open(closed_coords, handle_colour_data):
 
         # Try to detect the valve
         handle_found = Valve_Handle_Controlled_V6.HandleDetection(img_open, closed_coords, handle_colour_data)
+
         # If valve was not found start again
         if handle_found == "No blobs found":
-            print "Valve was not found, please continue the calibration again"
+            print "Valve was not found, please continue the calibration again. If this repeats, restart the software"
+            continue
+
+        # Check is valve was correctly found:
+        if correct_blob_confirmation(handle_found, img_open) == False:
             continue
 
         # Record closed handle angle

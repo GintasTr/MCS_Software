@@ -20,7 +20,7 @@ from SimpleCV import *
 # Foreign object detection
 from Foreign_Object_Detection_Controlled_V2 import detect_foreign_object
 # LED sequence detection
-from LED_Sequence_Controlled_V6 import do_LED_scanning
+from LED_Sequence_Controlled_V7 import do_LED_scanning
 # Orange flap position detection
 from Orange_Flap_V3 import do_Orange_Flap_scanning
 # Valve handle position detection
@@ -47,7 +47,7 @@ def read_comms_output(I2C_DEVICE_ADDR):
     # string_used = "".join([chr(i) for i in number_used])        # Convert sequence of numbers to ASCII string
     #                                                             # In format of #$F(fault_bit)S(stop_bit)%
 
-    string_used = "#$F1S0%"  # ONLY FOR TESTING
+    string_used = "#$F3S0%"  # ONLY FOR TESTING
 
 
 
@@ -78,16 +78,16 @@ def send_message_to_comms(I2C_DEVICE_ADDR, message_to_comms):
     sent_message = encode_message_to_comms(message_to_comms)    # Put the information in format of
                                                                 # #$P(detection_progress)F(fault_result)E(error),%
 
-
-
-
-
     #WRITE:
     DATATOSEND = sent_message                                   # Has to be in format of: "#$P0F0S0,%"
     ascii_Send=[]                                               # Initialise the list to be sent
     for i in DATATOSEND:                                        # For every member in DATATOSEND variable
         ascii_Send.append(ord(i))                               # Add a numbers version to list to be sent
+
+
     print "String to send is: ", DATATOSEND # DEBUGGING FEEDBACK
+
+
     #bus.write_i2c_block_data(I2C_DEVICE_ADDR, 0x01, ascii_Send) # Send the data to commms system
 
 
@@ -112,11 +112,11 @@ def encode_message_to_comms(message_to_comms):
 def start_and_decode_orange_flap_scan():
     ## Orange flap scanning
     fault_detection_output = do_Orange_Flap_scanning()          # Start the scan
-    if fault_detection_output[0] == "E" or "e":                 # If output starts with E or e
+    if fault_detection_output[0] == ("E" or "e"):                 # If output starts with E or e
         return "Error"                                          # Return error
-    elif fault_detection_output[0] == "S" or "s":               # If output starts with S or s (Slope)
+    elif fault_detection_output[0] == ("S" or "s"):               # If output starts with S or s (Slope)
         return "1"                                              # Return that fault was detected
-    elif fault_detection_output[0] == "F" or "f":               # If output starts with F or f (Flat)
+    elif fault_detection_output[0] == ("F" or "f"):               # If output starts with F or f (Flat)
         return "0"                                              # Return that fault was not detected
     return "Error"                                              # Any other option (impossible) - Error
 
@@ -127,11 +127,11 @@ def start_and_decode_orange_flap_scan():
 def start_and_decode_LED_sequence_scan():
     ## LED Scanning
     fault_detection_output = do_LED_scanning()
-    if fault_detection_output[0] == "E" or "e":                 # If output starts with E or e
+    if fault_detection_output[0] == ("E" or "e"):                 # If output starts with E or e
         return "Error"                                          # Return error
-    elif fault_detection_output[0] == "F" or "f":               # If output starts with F or f (Faster)
+    elif fault_detection_output[0] == ("F" or "f"):               # If output starts with F or f (Faster)
         return "1"                                              # Return that fault was detected
-    elif fault_detection_output[0] == "S" or "s":               # If output starts with S or s (Slower)
+    elif fault_detection_output[0] == ("S" or "s"):               # If output starts with S or s (Slower)
         return "0"                                              # Return that fault was not detected
     return "Error"                                              # Any other option (impossible) - Error
 
@@ -141,11 +141,11 @@ def start_and_decode_LED_sequence_scan():
 def start_and_decode_coolant_valve_scan():
     ## Valve handle scanning
     fault_detection_output = do_Valve_Handle_scanning()
-    if fault_detection_output[0] == "E" or "e":                 # If output starts with E or e
+    if fault_detection_output[0] == ("E" or "e"):                 # If output starts with E or e
         return "Error"                                          # Return error
-    elif fault_detection_output[0] == "C" or "c":               # If output starts with C or c (Closed)
+    elif fault_detection_output[0] == ("C" or "c"):               # If output starts with C or c (Closed)
         return "1"                                              # Return that fault was detected
-    elif fault_detection_output[0] == "O" or "o":               # If output starts with O or o (Open)
+    elif fault_detection_output[0] == ("O" or "o"):               # If output starts with O or o (Open)
         return "0"                                              # Return that fault was not detected
     return "Error"                                              # Any other option (impossible) - Error
 
@@ -157,11 +157,11 @@ def start_and_decode_foreign_object_scan():
     FOREIGN_OBJECT = "Green_breadboard"                         # Default name for foreign object
     ## Foreign object scanning
     fault_detection_output = detect_foreign_object(FOREIGN_OBJECT)
-    if fault_detection_output[0] == "E" or "e":                 # If output starts with E or e
+    if fault_detection_output[0] == ("E" or "e"):                 # If output starts with E or e
         return "Error"                                          # Return error
-    elif fault_detection_output[0] == "O" or "o":               # If output starts with O or o (Object is present)
+    elif fault_detection_output[0] == ("O" or "o"):               # If output starts with O or o (Object is present)
         return "1"                                              # Return that fault was detected
-    elif fault_detection_output[0] == "N" or "n":               # If output starts with N or n (Not found)
+    elif fault_detection_output[0] == ("N" or "n"):               # If output starts with N or n (Not found)
         return "0"                                              # Return that fault was not detected
     return "Error"                                              # Any other option (impossible) - Error
 
@@ -172,11 +172,13 @@ def start_and_decode_foreign_object_scan():
 def start_and_decode_hot_spots_scan():
     ## Hot spots scanning
     fault_detection_output = do_hot_spot_detection()
-    if fault_detection_output[0] == "E" or "e":                 # If output starts with E or e
+    print "Output of Hot spot detection is: ", fault_detection_output
+    print fault_detection_output[0]
+    if fault_detection_output[0] == ("E" or "e"):                 # If output starts with E or e
         return "Error"                                          # Return error
-    elif fault_detection_output[0] == "H" or "h":               # If output starts with H or h (Hot spot detected)
+    elif fault_detection_output[0] == ("H" or "h"):               # If output starts with H or h (Hot spot detected)
         return "1"                                              # Return that fault was detected
-    elif fault_detection_output[0] == "N" or "n":               # If output starts with N or n (No hot spots detected)
+    elif fault_detection_output[0] == ("N" or "n"):               # If output starts with N or n (No hot spots detected)
         return "0"                                              # Return that fault was not detected
     return "Error"                                              # Any other option (impossible) - Error
 

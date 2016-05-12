@@ -17,7 +17,7 @@ def get_raw_values():
 
 # Function to get the image from the thermal camera
 def GetImage(raw_values):
-    STORED_IMAGE_NAME = "DetectionImage.jpg"
+    STORED_IMAGE_NAME = "DetectionImage1.jpg"
     #img = get_raw_values()                                  # Get raw image values
     cv2.normalize(raw_values, raw_values, 0, 65535, cv2.NORM_MINMAX)      # Normalize image
     np.right_shift(raw_values,8,raw_values)                               # Shift to 8 bit array
@@ -122,9 +122,9 @@ def do_hot_spot_detection():
                                                                     # Collect maximum temperature pixel data
                                                                     #  from multiple images
         ### TO SHOW THE IMAGE
-        #RADIUS = 2
-        #IMAGE_SCALAR = 3
-        #image = GetImage(max_temperature_information["raw_values"])
+        RADIUS = 2
+        IMAGE_SCALAR = 3
+        image = GetImage(max_temperature_information["raw_values"])
 
         if max_temperature_information["max_temperature"] > TEMPERATURE_THRESHOLD:
             Warning = True                                          # If max temp is larger than limit, flag the warning
@@ -139,15 +139,15 @@ def do_hot_spot_detection():
 
 
             ### TO SHOW THE IMAGE
-            #image.dl().circle((max_temperature_information["max_pixel_locations_x"][i],
-            #                  max_temperature_information["max_pixel_locations_y"][i]),
-            #                  RADIUS, color=Color.RED)
+            image.dl().circle((max_temperature_information["max_pixel_locations_x"][i],
+                              max_temperature_information["max_pixel_locations_y"][i]),
+                              RADIUS, color=Color.RED)
 
 
         ### TO SHOW THE IMAGE
-        #image = image.applyLayers()
-        #image = image.scale(IMAGE_SCALAR)
-        #show_image_until_pressed(image)
+        image = image.applyLayers()
+        image = image.scale(IMAGE_SCALAR)
+        show_image_until_pressed(image)
 
         if Warning:
             return "Hot spot detected"

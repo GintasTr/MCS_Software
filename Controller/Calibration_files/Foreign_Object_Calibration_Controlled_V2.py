@@ -106,7 +106,6 @@ def correct_blob_confirmation(handle, img):
     print TEXT_WHILE_IMAGE                                       # Print a message
     show_image_until_pressed(test_img)                           # Show image until pressed
     correct_blob = GetConfirmation(QUESTION_TO_ASK)              # Ask for confirmation
-    img.save("ForeignObject.jpg")   # TESTING DEBUGGING
     return correct_blob
 
 

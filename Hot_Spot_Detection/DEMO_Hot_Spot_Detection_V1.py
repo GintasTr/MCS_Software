@@ -13,7 +13,7 @@ def get_raw_values():
 
 # Function to get the image from the thermal camera
 def GetImage(raw_values):
-    STORED_IMAGE_NAME = "DetectionImage.jpg"
+    STORED_IMAGE_NAME = "DetectionImage1.jpg"
     #img = get_raw_values()                                  # Get raw image values
     cv2.normalize(raw_values, raw_values, 0, 65535, cv2.NORM_MINMAX)      # Normalize image
     np.right_shift(raw_values,8,raw_values)                               # Shift to 8 bit array
