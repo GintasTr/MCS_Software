@@ -182,7 +182,7 @@ def do_Valve_Handle_scanning():
         result = scanning_procedure(Handle_coords,colour_data)
         processed_result = process_a_result(result, closed_angle_stored, open_angle_stored)
         results[i] = processed_result
-        print results[i]        # TESTING
+        #print results[i]        # TESTING
 
     final_result = calculate_average(results)
 

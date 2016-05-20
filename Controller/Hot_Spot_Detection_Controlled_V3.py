@@ -71,9 +71,9 @@ def get_max_temperature_data(raw_values):
 
 # Function to calculate temperature from raw value
 def temperature_from_raw(max_raw_value):
-    A = 0.1549                                              # Polynomial coefficients for T = 20C ambient
-    B = 19.11
-    C = 7454
+    A = 0.1205                                             # Polynomial coefficients for T = 20C ambient
+    B = 21.791
+    C = 7386
                                                             # Polynomial fit inverse (-B + (B^2-4*A*C)^1/2)/(2*A)
     temperature = (-B + math.sqrt(B*B - 4*A*(C-max_raw_value)))/(2*A)
 
@@ -122,9 +122,9 @@ def do_hot_spot_detection():
                                                                     # Collect maximum temperature pixel data
                                                                     #  from multiple images
         ### TO SHOW THE IMAGE
-        RADIUS = 2
-        IMAGE_SCALAR = 3
-        image = GetImage(max_temperature_information["raw_values"])
+        # RADIUS = 2
+        # IMAGE_SCALAR = 3
+        # image = GetImage(max_temperature_information["raw_values"])
 
         if max_temperature_information["max_temperature"] > TEMPERATURE_THRESHOLD:
             Warning = True                                          # If max temp is larger than limit, flag the warning
@@ -139,15 +139,15 @@ def do_hot_spot_detection():
 
 
             ### TO SHOW THE IMAGE
-            image.dl().circle((max_temperature_information["max_pixel_locations_x"][i],
-                              max_temperature_information["max_pixel_locations_y"][i]),
-                              RADIUS, color=Color.RED)
+            # image.dl().circle((max_temperature_information["max_pixel_locations_x"][i],
+            #                   max_temperature_information["max_pixel_locations_y"][i]),
+            #                   RADIUS, color=Color.RED)
 
 
         ### TO SHOW THE IMAGE
-        image = image.applyLayers()
-        image = image.scale(IMAGE_SCALAR)
-        show_image_until_pressed(image)
+        # image = image.applyLayers()
+        # image = image.scale(IMAGE_SCALAR)
+        # show_image_until_pressed(image)
 
         if Warning:
             return "Hot spot detected"

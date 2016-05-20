@@ -6,14 +6,6 @@ import smbus
 import time
 # TESTING DEBUGGING
 
-# prepares, selects the camera
-def setup():
-    global cam
-    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
-    #cam = Camera                                          # Only for laptop
-    time.sleep(1)
-
-
 
 from SimpleCV import *
 
@@ -38,18 +30,16 @@ def read_comms_output(I2C_DEVICE_ADDR):
     #Receive:
 
 
+    RECEIVED_DATA_LENGTH = 7                                    # How long is the message
+    received_number = bus.read_i2c_block_data(I2C_DEVICE_ADDR, 0x01)
+                                                                # Read the received things in numbers format
+    number_used = received_number[0:RECEIVED_DATA_LENGTH]       # Truncate the sequence to only used numbers
+    string_used = "".join([chr(i) for i in number_used])        # Convert sequence of numbers to ASCII string
+                                                                # In format of #$F(fault_bit)S(stop_bit)%
 
+    #string_used = "#$F3S0%"  # ONLY FOR TESTING
 
-    # RECEIVED_DATA_LENGTH = 7                                    # How long is the message
-    # received_number = bus.read_i2c_block_data(I2C_DEVICE_ADDR, 0x01)
-    #                                                             # Read the received things in numbers format
-    # number_used = received_number[0:RECEIVED_DATA_LENGTH]       # Truncate the sequence to only used numbers
-    # string_used = "".join([chr(i) for i in number_used])        # Convert sequence of numbers to ASCII string
-    #                                                             # In format of #$F(fault_bit)S(stop_bit)%
-
-    string_used = "#$F3S0%"  # ONLY FOR TESTING
-
-
+    print "Trying to read the message..."
 
     comms_output = interpret_comms_output(string_used)          # interpret the raw comms output to get the real message
 
@@ -88,8 +78,9 @@ def send_message_to_comms(I2C_DEVICE_ADDR, message_to_comms):
     print "String to send is: ", DATATOSEND # DEBUGGING FEEDBACK
 
 
-    #bus.write_i2c_block_data(I2C_DEVICE_ADDR, 0x01, ascii_Send) # Send the data to commms system
+    bus.write_i2c_block_data(I2C_DEVICE_ADDR, 0x01, ascii_Send) # Send the data to commms system
 
+    print "String sucesfully sent."
 
     return
 
@@ -206,8 +197,21 @@ def initiate_fault_detection(fault_bit):
         decoded_detection_output = start_and_decode_hot_spots_scan()     # Start and decode hot spots scan
     # If anything else - "Error", because they are not allocated currently
     else:
+        print "Message received is invalid"
         decoded_detection_output = "Error"
     return decoded_detection_output                                      # Return the output as "1", "0" or "Error"
+
+
+# Function to check if message received was in valid format of  0 <= ['fault_bit'] < 8,  0 <= ['stop_bit'] < 2.
+def was_meesage_invalid(comms_output):
+    if ((0 <= comms_output['fault_bit']) and
+            (comms_output['fault_bit'] < 8 ) and
+            (0 <=comms_output['stop_bit']) and
+            (comms_output['stop_bit'] < 2)):
+        return False
+    else:
+        return True
+
 
 
 ## MAIN SOFTWARE WHICH STARTS AND PERFORMS COMMUNICATIONS PERIODICALLY
@@ -234,9 +238,19 @@ def start_communications():
         wait_for_scan(time_delay)                               # Wait for a given period of time
         comms_output = read_comms_output(I2C_DEVICE_ADDR)       # Get the decoded output of the comms system
                                                                 # in format of comms_output ['fault_bit'] ['stop_bit']
+        if was_meesage_invalid(comms_output):                   # Check whether message received is valid.
+            print "Message received is invalid"
+            continue
 
         if comms_output["stop_bit"] == 1:                       # If stop is set
             print "Idle mode initiated"         # ONLY FOR DEBBUGING
+
+            message_to_comms["detection_progress"] = 0              # Clear the progress bit
+            message_to_comms["fault_result"] = 0                    # Clear result bit
+            message_to_comms["error"] = 0                           # Clear error bit
+                                                                    # Put the message to comms in propper format for comms
+            send_message_to_comms(I2C_DEVICE_ADDR, message_to_comms)# Send the message to communication system
+
             if comms_output["fault_bit"] == 7:                  # If stop == 1 AND fault == 7:
                 repeat = False                                  # Terminate the software
                 continue                                        # Start from the while loop (will get out of it)
@@ -267,6 +281,12 @@ def start_communications():
             message_to_comms["error"] = 0                        # Clear error bit
 
         send_message_to_comms(I2C_DEVICE_ADDR, message_to_comms) # Send the message to communication system
+
+    message_to_comms["detection_progress"] = 1              # Clear the progress bit
+    message_to_comms["fault_result"] = 1                    # Clear result bit
+    message_to_comms["error"] = 1                           # Clear error bit
+                                                            # Put the message to comms in propper format for comms
+    send_message_to_comms(I2C_DEVICE_ADDR, message_to_comms)# Send the message to communication system
 
     print SHUT_DOWN_NOTIFICATION                                 # If got out of loop, print notification
 

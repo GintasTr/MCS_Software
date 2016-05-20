@@ -51,8 +51,6 @@ def ObjectDetection(img, coords, data, object_area):
         return "No blobs found"
     foreign_object = all_blobs[0]                               # foreign_object is the closes blob to the click
 
-    print "Object height is:", foreign_object.height()
-
     return foreign_object
 
 

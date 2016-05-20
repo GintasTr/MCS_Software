@@ -90,7 +90,7 @@ def AcquireSlopeImage():  # Acquire slope flap image for calibration
     return flat_image
 
 def get_calibration_coordinates(flatImg):
-    CROP_LENGTH = 30
+    CROP_LENGTH = 20
     print "In the shown image, left click on the orange flap in the image to calibrate" \
       " its colour and then Escape or Right click to turn off the image"
     disp = Display(flatImg.size())  # Create a display
@@ -112,7 +112,7 @@ def get_calibration_coordinates(flatImg):
 
 # Function to find average values of colour (hue, sat, val)
 def ColorAveraging(flat_image, Calibration_coords):
-    CROP_LENGTH = 30 # For laptop - 20 #Adjust cropping area (x,y,w,h)
+    CROP_LENGTH = 20 # For laptop - 20 #Adjust cropping area (x,y,w,h)
     cropped = flat_image.crop(Calibration_coords[0],
                               Calibration_coords[1], CROP_LENGTH,
                               CROP_LENGTH, centered= True)

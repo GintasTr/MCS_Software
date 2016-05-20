@@ -215,7 +215,7 @@ def BlobsNumber(img, coords, hsv_data, dist):
         return "No blobs found"
                                                                 # Find ALL blobs in the image
     #all_blobs.draw(width=3)                                     # For debugging - draw all blobs
-    show_image_briefly(cropped)                                # DEBUGGING
+    #show_image_briefly(cropped)                                # DEBUGGING
     number_of_blobs = len(all_blobs)                            # Return the number of found blobs
 
 
@@ -486,7 +486,7 @@ def compare_frequency(led_sequence):
 
     threshold_period = 1.0/THRESHOLD_FREQUENCY                        # Calculate threshold Delta T
 
-    sequence_period = 2*get_average_period(led_sequence)              # Get average period (*2 because ON and OFF)
+    sequence_period = get_average_period(led_sequence)                # Get average period
     print "Threshold period is:", threshold_period
     if sequence_period < threshold_period:
         return "Faster - LED is blinking faster than threshold frequency"

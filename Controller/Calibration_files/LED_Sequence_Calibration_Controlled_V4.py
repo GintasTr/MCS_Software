@@ -149,18 +149,18 @@ def GetColourData(img, coords):
     stdSat = np.std(cropped_num[:,:,1])                             # Slice the NumPy array to get the std Sat
     # minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
     # meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
-    print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
-    print meanSat, "- mean Sat"
-    print stdSat, "- std Sat"
-    # print minSat, "- min Sat"
-    # print meanValue, " - min Val"
+    # print meanHue, "- mean Hue"                                 # Print the obtained values for debugging
+    # print meanSat, "- mean Sat"
+    # print stdSat, "- std Sat"
+    # # print minSat, "- min Sat"
+    # # print meanValue, " - min Val"
 
     hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
-    print hue_hist #TEST DEBUGGING
+    # print hue_hist #TEST DEBUGGING
 
     if hue_hist[0] and hue_hist[-1]  != 0:
         max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location
-        print "Object is red, then average hue is: ", max_index     # Report issue
+        # print "Object is red, then average hue is: ", max_index     # Report issue
         meanHue = max_index                                         # Re-write Hue value
 
     hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
@@ -276,7 +276,7 @@ def perform_calibration():
             if sequence_failed:                                     # If sequence calibration failed, start over
                 continue                                            # Return to top
                                                                     # Print the result for debugging
-            print min_light, " is minimum light", max_light, "is maximum light"
+            # print min_light, " is minimum light", max_light, "is maximum light"
             if max_light - min_light < 20:
                 scan_type = "number_of_blobs"
                                                                     # Notify user about calibration
@@ -323,26 +323,26 @@ min_light: %s"""
                     cal_data["scan_type"],
                     cal_data["max_light"],
                     cal_data["min_light"]))
-    print ("""m_led_coord_x: %s
-m_led_coord_y: %s
-avg_hue: %s
-avg_sat: %s
-std_sat: %s
-dist_led: %s
-seq_time: %s
-scan_type: %s
-max_light: %s
-min_light: %s"""
-                  % (cal_data["m_led_coords"][0],
-                    cal_data["m_led_coords"][1],
-                    cal_data["m_led_data"]["avg_hue"],
-                    cal_data["m_led_data"]["avg_sat"],
-                    cal_data["m_led_data"]["std_sat"],
-                    cal_data["dist_led"],
-                    cal_data["seq_time"],
-                    cal_data["scan_type"],
-                    cal_data["max_light"],
-                    cal_data["min_light"]))
+#     print ("""m_led_coord_x: %s                   DEBUGGING
+# m_led_coord_y: %s
+# avg_hue: %s
+# avg_sat: %s
+# std_sat: %s
+# dist_led: %s
+# seq_time: %s
+# scan_type: %s
+# max_light: %s
+# min_light: %s"""
+#                   % (cal_data["m_led_coords"][0],
+#                     cal_data["m_led_coords"][1],
+#                     cal_data["m_led_data"]["avg_hue"],
+#                     cal_data["m_led_data"]["avg_sat"],
+#                     cal_data["m_led_data"]["std_sat"],
+#                     cal_data["dist_led"],
+#                     cal_data["seq_time"],
+#                     cal_data["scan_type"],
+#                     cal_data["max_light"],
+#                     cal_data["min_light"]))
 
 
 # MAIN SOFTWARE:
