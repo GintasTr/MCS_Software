@@ -1,11 +1,10 @@
-for i in range(1,1024,100):
-    mouseX = i
+import time
+from SimpleCV import *
 
-    mouseX = mouseX * 2592/1024
-    print "for %s in low res, %s in high res" % (i, mouseX)
-#print mouseY
+c = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+time.sleep(1)
+js = JpegStreamer("0.0.0.0:8080")
 
-
-#mouseX = mouseX * 2592/1024
-#mouseY = mouseY * 1944/768
-
+while(1):
+  c.getImage().save(js)
+  time.sleep(0.1)

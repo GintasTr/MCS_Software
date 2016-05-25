@@ -6,7 +6,7 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 
 from SimpleCV import *
 import cv2
-from Controller import Orange_Flap_V3
+from Controller import Orange_Flap_V4
 
 # prepares, selects the camera
 def setup():
@@ -149,7 +149,7 @@ def Flat_Calibration():
         Calibration_coords = get_calibration_coordinates(flat_image)
         print "Approximate coordinates of flap: ", Calibration_coords
         Calibration_values = ColorAveraging(flat_image, Calibration_coords)
-        filteredImage = Orange_Flap_V3.apply_filter(Calibration_values, flat_image)
+        filteredImage = Orange_Flap_V4.apply_filter(Calibration_values, flat_image)
         possible_flaps = filteredImage.findBlobs(threshval = blobs_threshold_flat, minsize=blobs_min_size_flat)
         if possible_flaps > 1:
             possible_flaps = possible_flaps.sortDistance(point =(Calibration_coords[0], Calibration_coords[1]))
@@ -193,7 +193,7 @@ def Slope_Calibration(AvHue,AvSat,StdSat,mouseX,mouseY):
     slope_calibration_done = False
     while (not slope_calibration_done):
         slope_image = AcquireSlopeImage()
-        filtered_image = Orange_Flap_V3.apply_filter({"AvHue": AvHue, "AvSat": AvSat, "StdSat": StdSat}, slope_image)
+        filtered_image = Orange_Flap_V4.apply_filter({"AvHue": AvHue, "AvSat": AvSat, "StdSat": StdSat}, slope_image)
         possible_flaps = filtered_image.findBlobs(threshval = blobs_threshold_slope, minsize=blobs_min_size_slope)   #CAN ADD SIZES AND STUFF
         if possible_flaps > 1:
             possible_flaps = possible_flaps.sortDistance(point =(mouseX, mouseY))
