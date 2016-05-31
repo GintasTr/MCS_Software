@@ -6,7 +6,7 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 
 from SimpleCV import *
 import cv2
-from Controller import LED_Sequence_Controlled_V7
+from Controller import LED_Sequence_Controlled_V8
 
 # prepares, selects the camera
 def setup():
@@ -134,13 +134,7 @@ def GetColourData(img, coords):
     cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
                        coords[1], CROP_SIZE,
                        CROP_SIZE, centered= True)
-    cropped_num = cropped.getNumpyCv2()                         # Convert image to numpy array compatible with openCV
-    cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)  # Convert image to HSV colour scheme with openCV
 
-
-    # cropped = img.crop(coords[0],                               # Adjust cropping area (x,y,w,h)
-    #                    coords[1], CROP_SIZE,
-    #                    CROP_SIZE, centered= True)
     cropped_num = cropped.getNumpyCv2()                         # Convert image to numpy array compatible with openCV
     cropped_num = cv2.cvtColor(cropped_num, cv2.COLOR_BGR2HSV)  # Convert image to HSV colour scheme with openCV
 
@@ -221,7 +215,7 @@ def perform_calibration():
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
         m_led_data = GetColourData(m_led_img, m_led_coords)
                                                                 # Detect the Main LED blob
-        m_led_blob = LED_Sequence_Controlled_V7.MainLedDetection(m_led_img, m_led_coords, m_led_data)
+        m_led_blob = LED_Sequence_Controlled_V8.MainLedDetection(m_led_img, m_led_coords, m_led_data)
         if m_led_blob == "No blobs found":                      # If no leds were found
             print "No LEDs were found based on your calibration. Please, restart calibration"
             continue                                            # Go to the start of the loop (take image again)
@@ -262,7 +256,7 @@ def perform_calibration():
             while(elapsed_time<seq_time):                           # Loop while sequence is not finished
                 live_img = GetImage()                               # Obtain live image
                                                                     # Measure the illumination around LEDs
-                area_light = LED_Sequence_Controlled_V7.GetLight(live_img, m_led_coords, m_led_data, dist_led)
+                area_light = LED_Sequence_Controlled_V8.GetLight(live_img, m_led_coords, m_led_data, dist_led)
                 if area_light == "No blobs found":                  # Check whether No blobs were found
                     print "Lost main LED, please re-calibrate"      # Inform the user about "No blobs"
                     sequence_failed = True                          # When "break" out of loop, signal to start over

@@ -10,15 +10,15 @@ import time
 from SimpleCV import *
 
 # Foreign object detection
-from Foreign_Object_Detection_Controlled_V2 import detect_foreign_object
+from Foreign_Object_Detection_Controlled_V3 import detect_foreign_object
 # LED sequence detection
-from LED_Sequence_Controlled_V7 import do_LED_scanning
+from LED_Sequence_Controlled_V8 import do_LED_scanning
 # Orange flap position detection
-from Orange_Flap_V4 import do_Orange_Flap_scanning
+from Orange_Flap_V5 import do_Orange_Flap_scanning
 # Valve handle position detection
-from Valve_Handle_Controlled_V6 import do_Valve_Handle_scanning
+from Valve_Handle_Controlled_V7 import do_Valve_Handle_scanning
 # Hot spot detection
-from Hot_Spot_Detection_Controlled_V3 import do_hot_spot_detection
+from Hot_Spot_Detection_Controlled_V4 import do_hot_spot_detection
 
 # Function to wait for a time period
 def wait_for_scan(time_delay):

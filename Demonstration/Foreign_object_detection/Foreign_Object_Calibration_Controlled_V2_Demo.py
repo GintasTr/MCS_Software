@@ -6,14 +6,17 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 
 
 from SimpleCV import *
+from object_calibration_show_images import *
 import cv2
 
 # prepares, selects the camera
-def setup():
+def setup(cam_received):
     global cam
-    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    cam = cam_received
+
+    # cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
     #cam = Camera()
-    time.sleep(1)
+    # time.sleep(1)
 
 # for image acquisition from camera (and flipping)
 def GetImage():
@@ -62,16 +65,18 @@ def inform_user(informationText):
 def RequestConfirmedImage(RequestText, ConfirmationText1, ConfirmationText2):
     confirmation = False                                        # Initialise the confimation loop
     while not confirmation:                                     # Loop until confirmation = True
-        raw_input(RequestText)                                  # Show the request to put camera nicely.
+        request_of_confirmed_image()
+        # raw_input(RequestText)                                  # Show the request to put camera nicely.
         img = GetImage()                                        # Get image from camera
-        print ConfirmationText1                                 # Ask to close the image and then answer
-        disp = Display()                                        # Create a display
-        while disp.isNotDone():                                 # Loop until display is not needed anymore
-            if disp.mouseLeft:                                  # Check if left click was used on display
-                disp.done = True                                # Turn off Display
-            img.show()                                          # Show the image on Display
-        Display().quit()                                        # Exit the display so it does not go to "Not responding"
-        confirmation = GetConfirmation(ConfirmationText2)       # Ask whether LED was clearly visible and confirm.
+        # print ConfirmationText1                                 # Ask to close the image and then answer
+        # disp = Display()                                        # Create a display
+        # while disp.isNotDone():                                 # Loop until display is not needed anymore
+        #     if disp.mouseLeft:                                  # Check if left click was used on display
+        #         disp.done = True                                # Turn off Display
+        #     img.show()                                          # Show the image on Display
+        # Display().quit()                                        # Exit the display so it does not go to "Not responding"
+        # confirmation = GetConfirmation(ConfirmationText2)       # Ask whether LED was clearly visible and confirm.
+        confirmation = object_clearly_seen(img)
     return img
 
 
@@ -165,6 +170,9 @@ def object_type():
     CONFIRMATION_TEXT = "Object name is %s. And it is one word. Y/N?"
     SINGLE_WORD_WARNING = "Please, enter only single word (or use _ to seperate words)"
     correct_name = False                            # Initialise naming loop
+
+    object_type_image()
+
     while not correct_name:                         # Start looping
         object_type_name = raw_input(QUESTION_TO_ASK + "\n>>>")
         if len(object_type_name.split()) > 1:
@@ -221,8 +229,8 @@ def get_object_data():
         img_object = RequestConfirmedImage(USER_REQUEST, REQUEST_WHILE_IMAGE_SHOWN,CONFIRMATION_QUESTION)
 
         # Get the coordinates of example object
-        object_coords = getObjectCoords(img_object,COORDINATES_REQUEST)
-
+        #object_coords = getObjectCoords(img_object,COORDINATES_REQUEST)
+        object_coords = get_object_coords_image(img_object)
         # Get the average colour data around the selected part
         object_colour_data = GetColourData(img_object, object_coords)
         #In format of: hsv_data = {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
@@ -231,11 +239,13 @@ def get_object_data():
         object_found = InitialObjectDetection(img_object, object_coords, object_colour_data)
         # If no objects were found: Start again TODO: ADD aditonal user calibration?
         if object_found == "No blobs found":
+            object_not_found_image(img_object)
             print "No objects were found, please continue the calibration again"
             continue
 
         # Check if foreign object was correctly found:
-        if correct_blob_confirmation(object_found, img_object) == False:
+        if correct_object_confirmation_image(object_found, img_object) == False:
+        #if correct_blob_confirmation(object_found, img_object) == False:
             continue
 
         # Ask for the type of foreign object:
@@ -256,13 +266,12 @@ def get_object_data():
                              }
         return total_object_data
 
-        # Exit the loop
-        calibration_data_not_acquired = False
 
 
 # Function to perform calibration
 def perform_calibration():
 
+    calibration_start_image()
     # Function to get the foreign object data (avg hue, avg sat, std sat,
     # click coords, object_type_name, object_area, object_rect_distance, object_aspect_ratio)
     object_data = get_object_data()
@@ -280,22 +289,26 @@ def perform_calibration():
     FILE_NAME = store_results(object_coords_stored, object_name_stored, object_area_stored,
                   object_rect_distance_stored, object_aspect_ratio_stored,
                   object_average_hue, object_average_sat, object_std_sat)
-    return FILE_NAME
+    store_calibration_data_image(object_coords_stored, object_name_stored, object_area_stored,
+                  object_rect_distance_stored, object_aspect_ratio_stored,
+                  object_average_hue, object_average_sat, object_std_sat)
+
+    return object_name_stored
 
 
 
 # MAIN SOFTWARE:
-def do_calibration_procedure():
-    setup()                                                         # Perform camera setup
+def do_calibration_procedure(cam_received):
+    setup(cam_received)                                             # Perform camera setup
 
-    ### CALIBRATION PART
-    FILE_NAME = perform_calibration()
-
-    raw_input("Calibration Done. Saved as " + FILE_NAME)
+    object_name_stored = perform_calibration()
+    return object_name_stored
+    # raw_input("Calibration Done. Saved as " + FILE_NAME)
 
 
 # If called by itself, perform calibration
 if __name__ == '__main__':
-    do_calibration_procedure()
+    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    file_name = do_calibration_procedure(cam)
 
 
