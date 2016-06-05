@@ -75,14 +75,14 @@ class Show_images():
 
 
     def show_image_briefly(self, img):
-        if self.disp.isNotDone:
-            img.save(self.disp)                # Show the image on Display
-            img.clearLayers()                  # Clear old drawings
-        else:
-            self.disp.isDone = False
+        self.disp.checkEvents()
+        img.save(self.disp)                # Show the image on Display
+        img.clearLayers()                  # Clear old drawings
 
-    ####### DOES NOT WORK
+
     def show_briefly_till_n(self, img):
+
+        self.disp.checkEvents()
         img.save(self.disp)                # Show the image on Display
         pressed = pg.key.get_pressed()
         if (pressed[pg.K_n] == 1):                         # If n pressed

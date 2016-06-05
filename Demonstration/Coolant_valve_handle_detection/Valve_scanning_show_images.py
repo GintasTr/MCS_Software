@@ -5,9 +5,11 @@ import sys                                                  # Only for RPI
 sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 
 from SimpleCV import *
-import cv2
+from Demonstration.show_images import Show_images
 
-disp = Display((960, 720))  #((1024, 768))   640,480                           # Create a display
+
+screen = Show_images()
+# disp = Display((960, 720))  #((1024, 768))   640,480                           # Create a display
 
 IMAGE640 = Image("640Background.jpg")
 IMAGE1024 = Image("BlackBackground.gif")
@@ -21,25 +23,16 @@ def start_scanning_image():
     img.dl().setFontSize(70)
     img.dl().text(
         "Coolant valve handle detection",
-        (140,img.height/3),
+        (110,img.height/3),
         # (img.width, img.width),
         color=Color.WHITE)
     img.dl().text(
         "Press Enter",
-        (370,img.height - 150),
+        (340,img.height - 150),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
-
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
-
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    screen.show_till_press_enter(img)
 
     #disp.quit()                                       # Exit the display so it does not go to "Not responding"
 
@@ -60,53 +53,28 @@ def reading_from_file_image(Handle_coord_x,Handle_coord_y, closed_angle_stored,
     text_temp = "Handle coordinates: X - %04i, Y - %04i" % (Handle_coord_x,Handle_coord_y)
     img.dl().text(
         text_temp,
-        (150,250),
+        (110,250),
         color=Color.WHITE)
     text_temp = "Calibration angles: Closed - %.1f, Open - %.1f" % (round(closed_angle_stored,2),round(open_angle_stored,2))
     img.dl().text(
         text_temp,
-        (150,300),
+        (110,300),
         color=Color.WHITE)
     text_temp = "Average colour data: Hue - %.1f, Sat - %.1f" % (round(closed_average_hue,2),round(closed_average_sat,2))
     img.dl().text(
         text_temp,
-        (150,350),
+        (110,350),
         color=Color.WHITE)
 
     img.dl().setFontSize(70)
     img.dl().text(
         "Press Enter",
-        (370,img.height - 150),
+        (340,img.height - 150),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
+    screen.show_till_press_enter(img)
 
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
-
-def detection_image_taken(img):
-    img.dl().setFontSize(70)
-    img.dl().text(
-        "Detection image taken",
-        (230, 30),
-        # (img.width, img.width),
-        color=Color.WHITE)
-
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
 
 # If handle is not found during scanning
 def scanning_handle_not_found(img):
@@ -118,72 +86,54 @@ def scanning_handle_not_found(img):
         color=Color.WHITE)
     img.dl().text(
         "Press Enter",
-        (370,img.height - 120),
+        (340,img.height - 120),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
-
-# If handle is found, show found blobs
-def show_filtered_image(img, all_blobs, m_Handle):
-
-    img.dl().setFontSize(70)
-    img.dl().text(
-        "Possible detected handles",
-        (200, 30),
-        # (img.width, img.width),
-        color=Color.WHITE)
-
-    for b in all_blobs:
-        b.draw(color = Color.RED, width=3, layer = img.dl())
-    m_Handle.draw(color = Color.GREEN,width=3, layer = img.dl())
-
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    return screen.show_briefly_till_n(img)
 
 
 # Show lines with angles to represent comparison
-def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle):
+def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle,
+                           current_position, angle_inverse):
     LENGTH = 150             # Pixels
 
-    img.dl().setFontSize(70)
+
+    if current_position == "Closed":
+        text_colour = Color.RED
+    elif current_position == "Open":
+        text_colour = Color.YELLOW
+    else:
+        text_colour = Color.BLUE
+        handle_position = "Not found"
+
+    img.dl().setFontSize(50)
     img.dl().text(
-        "Comparing calibrated angles",
+        ("Detected angle is closer to %s angle" % current_position),
         (165, 30),
-        # (img.width, img.width),
-        color=Color.WHITE)
+        color=text_colour)
 
     img.dl().setFontSize(40)
     img.dl().text(
-        "Detected position",
-        (20, 500),
+        ("Detected angle: %.2f" % current_angle),
+        (20, 480),
         # (img.width, img.width),
         color=Color.BLUE)
     img.dl().text(
-        "Open position",
-        (20, 540),
+        ("Open angle: %.2f" % open_angle),
+        (20, 520),
         # (img.width, img.width),
-        color=Color.GREEN)
+        color=Color.YELLOW)
     img.dl().text(
-        "Closed position",
-        (20, 580),
+        ("Closed angle: %.2f" % closed_angle),
+        (20, 560),
         # (img.width, img.width),
         color=Color.RED)
+    img.dl().text(
+        ("Distance to %s angle: %.1f" % (current_position, round(angle_inverse,2))),
+        (255, img.height - 100),
+        color= text_colour,
+        alpha = 255)
 
 
     # Draw CLOSED LINES (RED)
@@ -205,10 +155,10 @@ def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle)
 
     img.dl().line(start=handle.bottomLeftCorner(),
                   stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
-                  color = Color.GREEN, width = 3)
+                  color = Color.YELLOW, width = 3)
     img.dl().line(start=handle.bottomLeftCorner(),
                   stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
-                  color = Color.GREEN, width = 3)
+                  color = Color.YELLOW, width = 3)
 
     # Draw CURRENT LINES (BLUE)
     current_angle_radians = math.radians(current_angle)
@@ -222,147 +172,9 @@ def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle)
                   stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
                   color = Color.BLUE, width = 3)
 
-    img.save(disp)
-    ###COMMENT IN
-    # while disp.isNotDone():                      # Loop until display is not needed anymore
-    #     pressed = pg.key.get_pressed()
-    #     if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-    #         disp.done = True
-    #     img.show()                                    # Show the image on Display
-    # disp.done = False
-    img.show() #COmment out
 
-    img.clearLayers()                                       # Clear old drawings
+    return screen.show_briefly_till_n(img)
 
-# If handle is CLOSED
-def comparison_results_closed(current_angle,closed_angle,img, handle, angle_info):
-    LENGTH = 150             # Pixels
-
-    img.dl().setFontSize(50)
-    img.dl().text(
-        "Detected angle is closer to closed angle",
-        (165, 30),
-        color=Color.WHITE)
-
-    img.dl().text(
-    "Distance to closed angle: %.1f" % (round(angle_info,2)),
-    (255, img.height - 150),
-    color= Color.RED,
-    alpha = 255)
-
-
-    img.dl().setFontSize(40)
-    img.dl().text(
-        "Detected position",
-        (20, 540),
-        # (img.width, img.width),
-        color=Color.BLUE)
-    img.dl().text(
-        "Closed position",
-        (20, 580),
-        # (img.width, img.width),
-        color=Color.RED)
-
-
-
-    # Draw CLOSED LINES (RED)
-    closed_angle_radians = math.radians(closed_angle)
-    y_offset = int(round(LENGTH * math.sin(closed_angle_radians)))
-    x_offset = int(round(LENGTH * math.cos(closed_angle_radians)))
-
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
-                  color = Color.RED, width = 3)
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
-                  color = Color.RED, width = 3)
-
-  # Draw CURRENT LINES (BLUE)
-    current_angle_radians = math.radians(current_angle)
-    y_offset = int(round(LENGTH * math.sin(current_angle_radians)))
-    x_offset = int(round(LENGTH * math.cos(current_angle_radians)))
-
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
-                  color = Color.BLUE, width = 3)
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
-                  color = Color.BLUE, width = 3)
-
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
-
-
-# If handle is OPEN
-def comparison_results_open(current_angle, open_angle, img, handle, angle_info):
-    LENGTH = 150             # Pixels
-
-    img.dl().setFontSize(50)
-    img.dl().text(
-        "Detected angle is closer to open angle",
-        (175, 30),
-        # (img.width, img.width),
-        color=Color.WHITE)
-
-    img.dl().text(
-    "Distance to open angle: %.1f" % (round(angle_info,2)),
-    (265, img.height - 150),
-    color= Color.GREEN,
-    alpha = 255)
-
-    img.dl().setFontSize(40)
-    img.dl().text(
-        "Detected position",
-        (20, 540),
-        # (img.width, img.width),
-        color=Color.BLUE)
-    img.dl().text(
-        "Open position",
-        (20, 580),
-        # (img.width, img.width),
-        color=Color.GREEN)
-
-
-    # Draw OPEN LINES (GREEN)
-    closed_angle_radians = math.radians(open_angle)
-    y_offset = int(round(LENGTH * math.sin(closed_angle_radians)))
-    x_offset = int(round(LENGTH * math.cos(closed_angle_radians)))
-
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
-                  color = Color.GREEN, width = 3)
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
-                  color = Color.GREEN, width = 3)
-
-  # Draw CURRENT LINES (BLUE)
-    current_angle_radians = math.radians(current_angle)
-    y_offset = int(round(LENGTH * math.sin(current_angle_radians)))
-    x_offset = int(round(LENGTH * math.cos(current_angle_radians)))
-
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
-                  color = Color.BLUE, width = 3)
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
-                  color = Color.BLUE, width = 3)
-
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
 
 # Before starting multiple scanning
 def start_multiple_scanning():
@@ -371,25 +183,16 @@ def start_multiple_scanning():
     img.dl().setFontSize(70)
     img.dl().text(
         "Confirmation scanning in progress",
-        (100,img.height/3),
+        (70,img.height/3),
         # (img.width, img.width),
         color=Color.WHITE)
     img.dl().text(
         "Please wait",
-        (360,img.height - 150),
+        (340,img.height - 150),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
-
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
-
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    screen.show_till_press_enter(img)
 
 # After multiple scanning - final one
 def end_multiple_scanning_results(final_result, angle_average):
@@ -398,7 +201,7 @@ def end_multiple_scanning_results(final_result, angle_average):
         text_colour = Color.RED
         handle_position = "Closed"
     elif final_result == "Open":
-        text_colour = Color.GREEN
+        text_colour = Color.YELLOW
         handle_position = "Open"
     else:
         text_colour = Color.BLUE
@@ -407,7 +210,7 @@ def end_multiple_scanning_results(final_result, angle_average):
     img.dl().setFontSize(70)
     img.dl().text(
     "End of scanning",
-    (310,50),
+    (285,50),
     color=Color.WHITE)
 
     img.dl().setFontSize(40)
@@ -425,28 +228,13 @@ def end_multiple_scanning_results(final_result, angle_average):
         # (img.width, img.width),
         color=text_colour)
 
-    img.dl().setFontSize(50)
-    img.dl().text(
-        "Finished scanning routine",
-        (290,img.height - 150),
-        # (img.width, img.width),
-        color=Color.WHITE)
-    img.save(disp)
-
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
-
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    screen.show_till_press_enter(img)
 
 
 if __name__ == '__main__':
     while True:
-        img = IMAGE1024
-        detection_image_taken(img)
+        img = BACKGROUND_IMAGE
+        start_multiple_scanning()
         # closed_coords_stored_x = 1203
         # closed_coords_stored_y = 542
         # closed_angle_stored = 12.3542

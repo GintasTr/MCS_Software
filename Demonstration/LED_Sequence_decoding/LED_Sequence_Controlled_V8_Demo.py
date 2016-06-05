@@ -223,10 +223,10 @@ def SequenceScanning(cal_data):
         if MainLedDetection(live_img ,m_led_coords,m_led_data) == "No blobs found":
                                                                  # Check if there is a main LED
             elapsed_time1 = time.time() - start1                # Check how long main LED is not detected
+
+            not_used = demo_images.looking_for_LED(live_img)
+
             if elapsed_time1 > FIRST_DETECTION_LIMIT:            # If it is longer than limit
-
-                demo_images.looking_for_LED(live_img)
-
                 return "Error - first LED not found"             # Return error
             continue                                             # Start from the top of the loop
         print "LED found, starting sequence scanning"            # Notify user about sequence scanning
@@ -252,7 +252,7 @@ def SequenceScanning(cal_data):
 
                 if number_of_blobs == "No blobs found":              # If no blobs were found
 
-                    demo_images.looking_for_LED(live_img)
+                    show_scanning_demo = demo_images.looking_for_LED(live_img)
 
                     led_state = "Not_found"
                     if previous_state == led_state:
@@ -281,7 +281,7 @@ def SequenceScanning(cal_data):
                     time_of_current_state = time.time() - last_change_time
                     # elapsed_time = (time.time() - start2)            # Update elapsed time for the loop
 
-                    demo_images.sequence_scanning_image_shown(live_img, blobs_result["main_LED_blob"],
+                    show_scanning_demo = demo_images.sequence_scanning_image_shown(live_img, blobs_result["main_LED_blob"],
                                               blobs_result["filtered_img_with_LEDs"],
                                               blobs_result["crop_length"],
                                               time_of_current_state,
@@ -297,7 +297,7 @@ def SequenceScanning(cal_data):
                 elapsed_old = elapsed_time                           # Update Old time for delta T calculations
                                                                      # Add new values to sequence list
 
-                demo_images.sequence_scanning_image_shown(live_img, blobs_result["main_LED_blob"],
+                show_scanning_demo = demo_images.sequence_scanning_image_shown(live_img, blobs_result["main_LED_blob"],
                           blobs_result["filtered_img_with_LEDs"],
                           blobs_result["crop_length"],
                           time_of_current_state,
@@ -369,11 +369,11 @@ def read_calibration_data(STORAGE_FILE):
 # Single value in led_sequence is: LED state: ON at 14.6632 Delta T from last state: 0.4788
 def get_average_period(led_sequence):
     sum = 0                                                         # Initialize sum
-    for i in range(0, (len(led_sequence)-1)):                       # For whole length of sequence
+    for i in range(0, (len(led_sequence)-2)):                       # For whole length of sequence
         if led_sequence[i].split()[0] !="No":                       # Only if first word is not equal to "No"
-            sum += float(led_sequence[(i+1)].split()[-1])           # Sum the Delta T of next item
+            sum += float(led_sequence[(i+2)].split()[-1])           # Sum the Delta T of next item
                                                                     # to get how long the state was constant
-    average = sum/len(led_sequence)                                 # Calculate average frequency
+    average = sum/(len(led_sequence)-2)                             # Calculate average frequency
     print "Average period is:", average                             # For debugging
     return average
 
@@ -441,12 +441,13 @@ def do_LED_scanning(local_cam, location_byte):
     results_are_not_valid = check_validity(led_sequence, calibration_data["seq_time"])
 
     if results_are_not_valid:                                     # If results were not valid
+        demo_images.non_valid_scan()
         return "Error - results are not valid because main LED was lost for too long"
 
     #result = compare_frequency(led_sequence)                # Only for binary results
     result = get_average_period(led_sequence)                # Get average period
     result = ("%f" % round(result,2))[0:4]
-
+    demo_images.scanning_done_image(led_sequence, result)
     return result
 
 # If called by itself:

@@ -80,7 +80,7 @@ class orange_scanning_images():
             # (img.width, img.width),
             color=Color.WHITE)
 
-        self.screen.show_image_briefly(img)
+        return self.screen.show_briefly_till_n(img)
 
     def show_detected_orange_flap(self, img, detected_flap, FlapWHRatio, position, flat_ratio, slope_ratio):
 
@@ -137,7 +137,7 @@ class orange_scanning_images():
             (200, 40),
             color = text_colour)
 
-        self.screen.show_image_briefly(img)
+        return self.screen.show_briefly_till_n(img)
 
 
 if __name__ == '__main__':

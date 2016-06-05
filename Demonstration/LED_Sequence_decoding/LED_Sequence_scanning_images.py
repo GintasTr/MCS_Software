@@ -81,11 +81,11 @@ class LED_scanning_images():
         img.dl().setFontSize(70)
         img.dl().text(
             "Looking for always on LED",
-            (200, 30),
+            (170, 30),
             # (img.width, img.width),
             color=Color.WHITE)
 
-        self.screen.show_image_briefly(img)
+        return self.screen.show_briefly_till_n(img)
 
     def sequence_scanning_image_shown(self, img, main_blob,
                                       filtered_img_with_LEDs, crop_width,
@@ -125,15 +125,79 @@ class LED_scanning_images():
             (120,img.height - 80),
             # (img.width, img.width),
             color=Color.WHITE)
+        return self.screen.show_briefly_till_n(img)
+
+    def non_valid_scan(self):
+        img = self.BACKGROUND_IMAGE
+
+        img.dl().setFontSize(70)
+        img.dl().text(
+            "Scanning results list:",
+            (170,50),
+            color=Color.WHITE)
+
+        img.dl().setFontSize(45)
+
+        img.dl().text(
+            "Scanning results are not valid:",
+            (120,250),
+            color=Color.WHITE)
+        img.dl().text(
+            "Always on LED was not found for ",
+            (120,300),
+            color=Color.WHITE)
+        img.dl().text(
+            "more than half of the scan time",
+            (120,350),
+            color=Color.WHITE)
+
+        img.dl().setFontSize(70)
+        img.dl().text(
+            "Press Enter",
+            (340,img.height - 100),
+            # (img.width, img.width),
+            color=Color.WHITE)
+
+        self.screen.show_till_press_enter(img)
 
 
-        self.screen.show_image_briefly(img)
+    def scanning_done_image(self, results_list, average_period):
+        img = self.BACKGROUND_IMAGE
+
+        img.dl().setFontSize(70)
+        img.dl().text(
+            "Scanning results list:",
+            (210, 50),
+            color=Color.WHITE)
+
+        img.dl().setFontSize(45)
+
+        results_limit = 11
+        iterator = range(1,results_limit)
+        text_location = 120
+        for i in iterator:
+            img.dl().text(
+            results_list[i],
+            (100,text_location),
+            color=Color.WHITE)
+            text_location = text_location + 50
+
+        img.dl().setFontSize(70)
+        img.dl().text(
+            ("Average period is: %s" % average_period),
+            (210,img.height - 100),
+            color=Color.WHITE)
+
+        self.screen.show_till_press_enter(img)
+
+
+
 
 if __name__ == '__main__':
     while True:
         img = Image("960x720.jpg")
         c = LED_scanning_images()
-        c.scanning_start()
-        c.reading_from_file_image(354, 25, 2.54343, 5, 243.24354, 144.5455)
+        c.non_valid_scan()
+        # c.reading_from_file_image(354, 25, 2.54343, 5, 243.24354, 144.5455)
         # result = c.data_stored_image(354, 25, 2.54343, 1.4244, 243.24354, 144.5455)
         # print result

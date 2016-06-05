@@ -129,9 +129,9 @@ def do_Orange_Flap_scanning(cam_received, location_byte): ## DEBUGING TESTING
                                         flat_data["FlatWHRatio"], slope_data,
                                         flat_data["AvHue"],flat_data["AvSat"])
 
-    demo_done = False
+    show_demo = True
     ## Main loop:
-    while not demo_done:
+    while show_demo:
 
         Img = GetImage()
         Img = Img.toHSV()
@@ -142,7 +142,7 @@ def do_Orange_Flap_scanning(cam_received, location_byte): ## DEBUGING TESTING
         if possible_flaps > 1:
             possible_flaps = possible_flaps.sortDistance(point = (flat_data["mouseX"], flat_data["mouseY"]))
         elif possible_flaps < 1:
-            demo_images.no_flaps_found(Img)
+            show_demo = demo_images.no_flaps_found(Img)
             continue
 
         flap = possible_flaps[0]
@@ -159,7 +159,7 @@ def do_Orange_Flap_scanning(cam_received, location_byte): ## DEBUGING TESTING
         else:
             print "Error - Detected incorrectly"
 
-        demo_images.show_detected_orange_flap(Img,flap, detectedRatio,
+        show_demo = demo_images.show_detected_orange_flap(Img,flap, detectedRatio,
                                               position, flat_data["FlatWHRatio"], slope_data)
 
 

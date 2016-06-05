@@ -6,12 +6,15 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 
 from SimpleCV import *
 import cv2
+from Demonstration.show_images import Show_images
 
-disp = Display((1024, 768))  #((1024, 768))   640,480                           # Create a display
+screen = Show_images()
 
 IMAGE640 = Image("640Background.jpg")
 IMAGE1024 = Image("BlackBackground.gif")
-BACKGROUND_IMAGE = IMAGE1024
+IMAGE960 = Image("960x720.jpg")
+
+BACKGROUND_IMAGE = IMAGE960
 
 # Start of scanning
 def start_scanning_image():
@@ -20,25 +23,16 @@ def start_scanning_image():
     img.dl().setFontSize(70)
     img.dl().text(
         "Foreign object detection",
-        (220,img.height/3),
+        (195,img.height/3),
         # (img.width, img.width),
         color=Color.WHITE)
     img.dl().text(
         "Press Enter",
-        (370,img.height - 150),
+        (340,img.height - 150),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
-
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
-
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    screen.show_till_press_enter(img)
 
     #disp.quit()                                       # Exit the display so it does not go to "Not responding"
 
@@ -60,85 +54,49 @@ def reading_from_file_image(object_coords_stored, object_name_stored, object_are
     text_temp = "Object coordinates: X - %04i, Y - %04i" % (object_coords_stored[0],object_coords_stored[1])
     img.dl().text(
         text_temp,
-        (150,200),
+        (120,200),
         color=Color.WHITE)
     text_temp = "Object name: %s" % object_name_stored
     img.dl().text(
         text_temp,
-        (150,250),
+        (120,250),
         color=Color.WHITE)
     text_temp = "Object geometry: area - %i, aspect ratio - %.2f" % \
                 (object_area_stored,round(object_aspect_ratio_stored,2))
     img.dl().text(
         text_temp,
-        (150,300),
+        (120,300),
         color=Color.WHITE)
     text_temp = "Average colour data: Hue - %.1f, Sat - %.1f" % (round(object_average_hue,2),round(object_average_sat,2))
     img.dl().text(
         text_temp,
-        (150,350),
+        (120,350),
         color=Color.WHITE)
 
     img.dl().setFontSize(70)
     img.dl().text(
         "Press Enter",
-        (370,img.height - 150),
+        (340,img.height - 150),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
-
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
-
-# Image taken
-def detection_image_taken(img):
-    img.dl().setFontSize(70)
-    img.dl().text(
-        "Detection image taken",
-        (230, 30),
-        # (img.width, img.width),
-        color=Color.WHITE)
-
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
-
+    screen.show_till_press_enter(img)
 
 # If object is not found during scanning
 def scanning_object_not_found(img):
     img.dl().setFontSize(50)
     img.dl().text(
         "Specified foreign object was not found",
-        (200, 200),
+        (150, 200),
         # (img.width, img.width),
         color=Color.WHITE)
     img.dl().text(
         "Press Enter",
-        (400,img.height - 120),
+        (350,img.height - 120),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    return screen.show_briefly_till_n(img)
 
 
 # If object is found, show found blobs
@@ -146,7 +104,7 @@ def show_filtered_image(img, all_blobs, foreign_object):
 
     img.dl().setFontSize(70)
     img.dl().text(
-        "Possible detected objects",
+        "Possible foreign objects",
         (200, 60),
         # (img.width, img.width),
         color=Color.WHITE)
@@ -164,15 +122,7 @@ def show_filtered_image(img, all_blobs, foreign_object):
         b.draw(color = Color.RED, width=3, layer = img.dl())
     foreign_object.draw(color = Color.GREEN,width=3, layer = img.dl())
 
-    img.save(disp)
-
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    return screen.show_briefly_till_n(img)
 
 # Before starting multiple scanning
 def start_multiple_scanning():
@@ -181,25 +131,16 @@ def start_multiple_scanning():
     img.dl().setFontSize(70)
     img.dl().text(
         "Confirmation scanning in progress",
-        (100,img.height/3),
+        (70,img.height/3),
         # (img.width, img.width),
         color=Color.WHITE)
     img.dl().text(
         "Please wait",
-        (360,img.height - 150),
+        (340,img.height - 150),
         # (img.width, img.width),
         color=Color.WHITE)
 
-    img.save(disp)
-
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
-
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+    screen.show_till_press_enter(img)
 
 # After multiple scanning - final one
 def end_multiple_scanning_results(final_result, object_coord_x, object_coord_y):
@@ -213,46 +154,35 @@ def end_multiple_scanning_results(final_result, object_coord_x, object_coord_y):
         object_presence = "Present"
         img.dl().text(
         ("Object coordinates are: X - %i, Y - %i" % (object_coord_x,object_coord_y)),
-        (125,350),
+        (110,350),
         # (img.width, img.width),
         color=text_colour)
-
-    img.dl().setFontSize(70)
-    img.dl().text(
-    "End of scanning",
-    (310,50),
-    color=Color.WHITE)
 
     img.dl().setFontSize(40)
     img.dl().text(
         ("Object is: %s" %
          (object_presence)),
-        (125,300),
+        (110,300),
         # (img.width, img.width),
         color=text_colour)
 
-    img.dl().setFontSize(50)
+
+    img.dl().setFontSize(70)
     img.dl().text(
-        "Finished scanning routine",
-        (290,img.height - 150),
-        # (img.width, img.width),
-        color=Color.WHITE)
-    img.save(disp)
+    "End of scanning",
+    (285,50),
+    color=Color.WHITE)
 
-    while disp.isNotDone():                           # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if left click was used on display
-            disp.done = True                          # Turn off Display
-        img.show()                                    # Show the image on Display
 
-    disp.done = False
-    img.clearLayers()                                       # Clear old drawings
+
+
+    screen.show_till_press_enter(img)
 
 
 if __name__ == '__main__':
     while True:
-        img = IMAGE1024
-        detection_image_taken(img)
+        img = BACKGROUND_IMAGE
+        start_scanning_image()
         # closed_coords_stored_x = 1203
         # closed_coords_stored_y = 542
         # closed_angle_stored = 12.3542

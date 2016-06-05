@@ -56,14 +56,12 @@ def ObjectDetection(img, coords, data, object_area):
 
 
 def object_detection_show(img, coords, data, object_area):
-    detection_image_taken(img)
-
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     min_area = object_area/4                                    # Derive minimum and maximum area objects can take
     max_area = object_area*4
-    minsaturation = int(2*data["avg_sat"]/3)         #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(2*data["avg_sat"]/3)                    #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 230 #170 on laptop                        # Specify blobs colour distance threshold
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
@@ -78,13 +76,10 @@ def object_detection_show(img, coords, data, object_area):
     if all_blobs > 1:                                           # If more than 1 blob found
         all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
     elif all_blobs < 1:
-        scanning_object_not_found(img)
-        return "No blobs found"
+        return scanning_object_not_found(img)
     foreign_object = all_blobs[0]                               # foreign_object is the closes blob to the click
 
-    show_filtered_image(img, all_blobs, foreign_object)
-
-    return foreign_object
+    return show_filtered_image(img, all_blobs, foreign_object)
 
 # READ THE DATA STORED IN CALIBRATION FILE
 def read_calibration_data(NAME_OF_CALIBRATION_FILE):
@@ -123,10 +118,8 @@ def scanning_procedure(object_coords, colour_data, object_area):
 
 def scanning_procedure_show(object_coords, colour_data, object_area):
     img = GetImage()                                                   # Get the image
-    foreign_object = object_detection_show(img, object_coords, colour_data, object_area)
 
-                                                                       # Try to detect the object
-    result = {"img": img, "foreign_object": foreign_object}
+    result = object_detection_show(img, object_coords, colour_data, object_area)
     return result                                              # Return the result
 
 
@@ -210,7 +203,9 @@ def detect_foreign_object(cam_local, calibration_name):
                   object_rect_distance, object_aspect_ratio,
                   object_average_hue, object_average_sat, object_std_sat)
 
-    scanning_show_output = scanning_procedure_show(object_coords, colour_data, object_area)
+    show_demo = True
+    while show_demo:
+        show_demo = scanning_procedure_show(object_coords, colour_data, object_area)
 
     start_multiple_scanning()
     for i in range(0, len(results)):
@@ -253,6 +248,6 @@ def detect_foreign_object(cam_local, calibration_name):
 
 # If called by itself, just so that it does not show error when something is returned
 if __name__ == '__main__':
-    cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    cam = Camera(0, {"width": 960, "height": 720})    # Only for RPI 2592x1944. For calibration - 1024x768
     result = detect_foreign_object(cam, "Green_breadboard")
     print "Result returned from the module: ", result

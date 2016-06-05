@@ -21,7 +21,7 @@ def setup(cam_received):
 
 # for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()
+    # img = cam.getImage()
     img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS? ###COMMENT OUT
     #img = img.flipVertical()        ###COMMENT IN
     img = img.flipHorizontal()
@@ -39,42 +39,6 @@ def show_image_until_pressed(img):
 # Briefly flashes the image
 def show_image_briefly(img):
     img.show()                                              # Show the image on Display
-
-
-def HandleDetection_shown(img, coords, data):
-    #detection_image_taken(img) # COMMENT IN
-    #Std_constant = 4                                           # Describes how many std dev of value to include
-    min_value = 30                                              # Minimal illumination threshold
-                                                                # Derive minimum saturation. As a reminder: hsv_data =
-                                                                # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = int(2*data["avg_sat"]/3)       #(data["avg_sat"]- Std_constant * data["std_sat"])
-    img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 245                                       # Specify blobs colour distance threshold
-    blobs_min_size =  500                                       # Specify minimum blobs size
-                                                                # Apply filters to the image
-    filtered = img.hueDistance(color = data["avg_hue"],
-                               minsaturation = minsaturation,
-                               minvalue = min_value)
-    filtered = filtered.invert()                                # Invert black and white (to have Valve as white)
-
-    filtered = filtered.erode(1)    # ADDED TESTING
-    filtered = filtered.dilate(1)    # ADDED TESTING
-
-    #filtered = filtered.morphClose()                            # Perform morphOps
-    all_blobs = filtered.findBlobs(threshval = blobs_threshold, minsize=blobs_min_size)
-
-    # all_blobs.draw(width = 5)     #TESTING
-    # show_image_until_pressed(filtered)
-
-    if all_blobs > 1:                                           # If more than 1 blob found
-        all_blobs = all_blobs.sortDistance(point =(coords[0], coords[1]))   # Sort based on distance from mouse click
-    elif all_blobs < 1:
-        scanning_handle_not_found(img)
-        return "No blobs found"
-
-    m_Handle = all_blobs[0]                                       # m_Handle is the closes blob to the click
-    #show_filtered_image(img, all_blobs, m_Handle) #COMMENT IN
-    return m_Handle
 
 
 # Function to detect valve Handle:
@@ -132,17 +96,10 @@ def read_calibration_data(STORAGE_LOCATION):
     return calibration_data
 
 
-# Function to scan the image
-def scanning_procedure(Handle_coords, colour_data):
-    img = GetImage()                                           # Get the image
-    Handle = HandleDetection(img, Handle_coords, colour_data)  # Try to detect the handle
-    return Handle                       # Return the result
-
-
 def scanning_procedure_shown(Handle_coords,colour_data):
 
     img = GetImage()                                           # Get the image
-    Handle = HandleDetection_shown(img, Handle_coords, colour_data)  # Try to detect the handle
+    Handle = HandleDetection(img, Handle_coords, colour_data)  # Try to detect the handle
     return {"Handle": Handle, "img":img}                       # Return the result
 
 
@@ -177,11 +134,10 @@ def process_a_result_shown(handle, closed_angle, open_angle, img):
         angle_info = 99
         angle_results = {"position": "Error - No blobs found",
                          "angle_info": angle_info}
-        return angle_results
+        keep_scanning = scanning_handle_not_found(img)
+        return keep_scanning
 
     current_angle = handle.angle()
-
-    angle_comparison_image(current_angle, closed_angle, open_angle, img, handle)
 
     inverse_to_distance_from_closed = abs((current_angle-closed_angle)%180 - 90)
     inverse_to_distance_from_open = abs((current_angle-open_angle)%180 - 90)
@@ -189,14 +145,16 @@ def process_a_result_shown(handle, closed_angle, open_angle, img):
         angle_info = 90 - inverse_to_distance_from_closed
         angle_results = {"position": "Closed",
                          "angle_info": angle_info}
-        #comparison_results_closed(current_angle,closed_angle,img, handle, angle_info)
-        return angle_results
+
     else:
         angle_info = 90 - inverse_to_distance_from_open
         angle_results = {"position": "Open",
                          "angle_info": angle_info}
-        #comparison_results_open(current_angle,open_angle,img, handle, angle_info)
-        return angle_results
+
+    keep_scanning = angle_comparison_image(current_angle, closed_angle, open_angle, img, handle,
+                                           angle_results["position"], angle_results["angle_info"])
+    return keep_scanning
+
 
 
 # Function to calculate average of the results and return the final one
@@ -272,15 +230,17 @@ def do_Valve_Handle_scanning(cam_received):
 
     # Initialise variables
     open_angle_detected_average, closed_angle_detected_average, open_angle_numbers, closed_angle_numbers = 0, 0, 0, 0
-    while True:
+    show_scanning = True
+    while show_scanning:
         result_dictionary_shown = scanning_procedure_shown(Handle_coords,colour_data)
         result_shown = result_dictionary_shown["Handle"]
-        processed_result_shown = process_a_result_shown(result_shown, closed_angle_stored,
+        show_scanning = process_a_result_shown(result_shown, closed_angle_stored,
                                                         open_angle_stored,result_dictionary_shown["img"])
 
     start_multiple_scanning()
     for i in range(0, len(results)):
-        result = scanning_procedure(Handle_coords,colour_data)
+        result_dictionary_shown = scanning_procedure_shown(Handle_coords,colour_data)
+        result = result_dictionary_shown["Handle"]
         processed_result = process_a_result(result, closed_angle_stored, open_angle_stored)
                                                                 # Returns dictionary {"position", "angle_info"}
         results[i] = processed_result["position"]
@@ -306,7 +266,7 @@ def do_Valve_Handle_scanning(cam_received):
     else:
         angle_average = 99
 
-    angle_average = ("%f" % round(angle_average,2))[0:2]                # Convert to the required format
+    angle_average = ("%.2f" % round(angle_average,2))                # Convert to the required format
     end_multiple_scanning_results(final_result, angle_average)
     fault_detection_output = {"angle_information": angle_average,
                               "fault_detection_feedback": final_result
