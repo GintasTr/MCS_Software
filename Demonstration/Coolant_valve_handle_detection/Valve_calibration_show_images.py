@@ -9,9 +9,11 @@ import cv2
 
 IMAGE640 = Image("640Background.jpg")
 IMAGE1024 = Image("BlackBackground.gif")
-BACKGROUND_IMAGE = IMAGE1024
+IMAGE960 = Image("960x720.jpg")
 
-disp = Display((1024, 768))  #((1024, 768))                              # Create a display
+BACKGROUND_IMAGE = IMAGE960
+
+disp = Display((960, 720))  #((1024, 768))                              # Create a display
 # Start of calibration
 def calibration_start_image():
     img = BACKGROUND_IMAGE

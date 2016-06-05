@@ -34,7 +34,7 @@ def ObjectDetection(img, coords, data, object_area):
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     min_area = object_area/4                                    # Derive minimum and maximum area objects can take
     max_area = object_area*4
-    minsaturation = 150         #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(2*data["avg_sat"]/3)         #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 230 #170 on laptop                        # Specify blobs colour distance threshold
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
@@ -63,7 +63,7 @@ def object_detection_show(img, coords, data, object_area):
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     min_area = object_area/4                                    # Derive minimum and maximum area objects can take
     max_area = object_area*4
-    minsaturation = 150         #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(2*data["avg_sat"]/3)         #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 230 #170 on laptop                        # Specify blobs colour distance threshold
                                                                 # Apply filters to the image TODO: calibrate or change the filtering

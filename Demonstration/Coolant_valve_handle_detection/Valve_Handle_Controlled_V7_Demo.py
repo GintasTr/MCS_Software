@@ -22,8 +22,8 @@ def setup(cam_received):
 # for image acquisition from camera (and flipping)
 def GetImage():
     img = cam.getImage()
-    #img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipVertical()
+    img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS? ###COMMENT OUT
+    #img = img.flipVertical()        ###COMMENT IN
     img = img.flipHorizontal()
     return img
 
@@ -42,18 +42,18 @@ def show_image_briefly(img):
 
 
 def HandleDetection_shown(img, coords, data):
-    detection_image_taken(img)
+    #detection_image_taken(img) # COMMENT IN
     #Std_constant = 4                                           # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = 150       #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(2*data["avg_sat"]/3)       #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 245                                       # Specify blobs colour distance threshold
     blobs_min_size =  500                                       # Specify minimum blobs size
                                                                 # Apply filters to the image
     filtered = img.hueDistance(color = data["avg_hue"],
-                               #minsaturation = minsaturation,
+                               minsaturation = minsaturation,
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have Valve as white)
 
@@ -73,7 +73,7 @@ def HandleDetection_shown(img, coords, data):
         return "No blobs found"
 
     m_Handle = all_blobs[0]                                       # m_Handle is the closes blob to the click
-    show_filtered_image(img, all_blobs, m_Handle)
+    #show_filtered_image(img, all_blobs, m_Handle) #COMMENT IN
     return m_Handle
 
 
@@ -83,13 +83,13 @@ def HandleDetection(img, coords, data):
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = 150       #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(2*data["avg_sat"]/3)       #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 245                                       # Specify blobs colour distance threshold
     blobs_min_size = 500                                       # Specify minimum blobs size
                                                                 # Apply filters to the image
     filtered = img.hueDistance(color = data["avg_hue"],
-                               #minsaturation = minsaturation,
+                               minsaturation = minsaturation,
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     #filtered = filtered.morphClose()                            # Perform morphOps
@@ -140,6 +140,7 @@ def scanning_procedure(Handle_coords, colour_data):
 
 
 def scanning_procedure_shown(Handle_coords,colour_data):
+
     img = GetImage()                                           # Get the image
     Handle = HandleDetection_shown(img, Handle_coords, colour_data)  # Try to detect the handle
     return {"Handle": Handle, "img":img}                       # Return the result
@@ -188,13 +189,13 @@ def process_a_result_shown(handle, closed_angle, open_angle, img):
         angle_info = 90 - inverse_to_distance_from_closed
         angle_results = {"position": "Closed",
                          "angle_info": angle_info}
-        comparison_results_closed(current_angle,closed_angle,img, handle, angle_info)
+        #comparison_results_closed(current_angle,closed_angle,img, handle, angle_info)
         return angle_results
     else:
         angle_info = 90 - inverse_to_distance_from_open
         angle_results = {"position": "Open",
                          "angle_info": angle_info}
-        comparison_results_open(current_angle,open_angle,img, handle, angle_info)
+        #comparison_results_open(current_angle,open_angle,img, handle, angle_info)
         return angle_results
 
 
@@ -271,11 +272,11 @@ def do_Valve_Handle_scanning(cam_received):
 
     # Initialise variables
     open_angle_detected_average, closed_angle_detected_average, open_angle_numbers, closed_angle_numbers = 0, 0, 0, 0
-
-    result_dictionary_shown = scanning_procedure_shown(Handle_coords,colour_data)
-    result_shown = result_dictionary_shown["Handle"]
-    processed_result_shown = process_a_result_shown(result_shown, closed_angle_stored,
-                                                    open_angle_stored,result_dictionary_shown["img"])
+    while True:
+        result_dictionary_shown = scanning_procedure_shown(Handle_coords,colour_data)
+        result_shown = result_dictionary_shown["Handle"]
+        processed_result_shown = process_a_result_shown(result_shown, closed_angle_stored,
+                                                        open_angle_stored,result_dictionary_shown["img"])
 
     start_multiple_scanning()
     for i in range(0, len(results)):

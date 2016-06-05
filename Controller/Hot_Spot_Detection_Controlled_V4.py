@@ -126,7 +126,7 @@ def do_hot_spot_detection():
 
     ## TO SHOW THE IMAGE
     RADIUS = 2
-    IMAGE_SCALAR = 3
+    IMAGE_SCALAR = 3 ## 12.8 to get to 1024 x 768
     image = GetImage(max_temperature_information["raw_values"])
 
     if max_temperature_information["max_temperature"] > TEMPERATURE_THRESHOLD:

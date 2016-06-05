@@ -6,7 +6,7 @@ cam = None
 def setup():
     global cam
     if cam == None:
-        cam = Camera(0, {"width": 640, "height": 480})    # Only for RPI 2592x1944. For calibration - 1024x768
+        cam = Camera(0, {"width": 960, "height": 720})    # Only for RPI 2592x1944. For calibration - 1024x768
     #cam = Camera                                          # Only for laptop
     time.sleep(1)
 
@@ -14,9 +14,9 @@ def setup():
 # for image acquisition from camera (and flipping)
 def GetImage():
     img = cam.getImage()
-    #img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipVertical()
-    img = img.flipHorizontal()
+    img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
+    # img = img.flipVertical()
+    # img = img.flipHorizontal()
     return img
 
 

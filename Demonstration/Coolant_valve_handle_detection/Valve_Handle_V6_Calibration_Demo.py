@@ -21,9 +21,9 @@ def setup(cam_received):
 
 # for image acquisition from camera (and flipping)
 def GetImage():
-    #img = cam.getImage()
+    img = cam.getImage()  ###COMMENT OUT
     img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipVertical()
+    #img = img.flipVertical()   ###COMMENT IN
     img = img.flipHorizontal()
     return img
 
@@ -159,7 +159,7 @@ def GetColourData(img, coords):
     # raw_input("check results")                                  # FOR DEBUGGING
 
     hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
-    if hue_hist[1] and hue_hist[0] and hue_hist[-1] and hue_hist[-2] != 0:
+    if (hue_hist[1] != 0) and (hue_hist[0] != 0) and (hue_hist[-1] != 0) and (hue_hist[-2] != 0):
         print hue_hist
         max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location
         print "Object is red, then average hue is: ", max_index     # Report issue
@@ -304,5 +304,5 @@ def do_Calibration_procedure(cam_received):
 
 # If called by itself:
 if __name__ == '__main__':
-    cam = Camera(0, {"width": 1024, "height": 768})
+    cam = Camera(0, {"width": 960, "height": 720})
     do_Calibration_procedure(cam)

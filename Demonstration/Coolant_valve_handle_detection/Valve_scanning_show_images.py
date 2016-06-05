@@ -7,11 +7,12 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 from SimpleCV import *
 import cv2
 
-disp = Display((1024, 768))  #((1024, 768))   640,480                           # Create a display
+disp = Display((960, 720))  #((1024, 768))   640,480                           # Create a display
 
 IMAGE640 = Image("640Background.jpg")
 IMAGE1024 = Image("BlackBackground.gif")
-BACKGROUND_IMAGE = IMAGE1024
+IMAGE960 = Image("960x720.jpg")
+BACKGROUND_IMAGE = IMAGE960
 
 # Start of calibration
 def start_scanning_image():
@@ -222,13 +223,15 @@ def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle)
                   color = Color.BLUE, width = 3)
 
     img.save(disp)
+    ###COMMENT IN
+    # while disp.isNotDone():                      # Loop until display is not needed anymore
+    #     pressed = pg.key.get_pressed()
+    #     if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
+    #         disp.done = True
+    #     img.show()                                    # Show the image on Display
+    # disp.done = False
+    img.show() #COmment out
 
-    while disp.isNotDone():                      # Loop until display is not needed anymore
-        pressed = pg.key.get_pressed()
-        if(pressed[pg.K_RETURN] == 1):                # Check if y was pressed
-            disp.done = True
-        img.show()                                    # Show the image on Display
-    disp.done = False
     img.clearLayers()                                       # Clear old drawings
 
 # If handle is CLOSED

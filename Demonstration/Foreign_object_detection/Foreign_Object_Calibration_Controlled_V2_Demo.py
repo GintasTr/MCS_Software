@@ -20,7 +20,7 @@ def setup(cam_received):
 
 # for image acquisition from camera (and flipping)
 def GetImage():
-    #img = cam.getImage()
+    #img = cam.getImage() ###COMMENT OUT
     img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
     img = img.flipVertical()
     return img
@@ -120,7 +120,7 @@ def InitialObjectDetection(img, coords, data):
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = 150 #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(2*data["avg_sat"]/3) #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 230  #170 on laptop                       # Specify blobs colour distance threshold
     blobs_min_size =  10                                        # Specify minimum blobs size
@@ -155,7 +155,8 @@ def GetColourData(img, coords):
     meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
 
     hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
-    if hue_hist[0] and hue_hist[-1] != 0:
+    if (hue_hist[1] != 0) and (hue_hist[0] != 0) and (hue_hist[-1] != 0) and (hue_hist[-2] != 0):
+        print hue_hist
         max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location
         print "Object is red, then average hue is: ", max_index     # Report issue
         meanHue = max_index
