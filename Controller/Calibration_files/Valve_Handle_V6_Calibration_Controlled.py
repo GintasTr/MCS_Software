@@ -130,8 +130,8 @@ def GetColourData(img, coords):
     # print meanValue, " - min Val"
     # raw_input("check results")                                  # FOR DEBUGGING
 
-    hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
-    if hue_hist[0] and hue_hist[-1] != 0:
+    hue_hist = np.histogram(cropped.toHSV().getNumpy()[:,:,2], range = (0.0, 255.0), bins = 255)[0]  # Check if histogram rolls over (object is red.)
+    if ((hue_hist[0] != 0) and (hue_hist[-1] != 0)):
         max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location
         print "Object is red, then average hue is: ", max_index     # Report issue
         meanHue = max_index                                         # Re-write Hue value

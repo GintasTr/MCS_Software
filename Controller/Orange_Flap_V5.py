@@ -7,14 +7,16 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 from SimpleCV import *
 from os.path import exists
 
-cam = None
 # prepares, selects the camera
-def setup():
+def setup(cam_received, jpeg_streamer_local):
     global cam
-    if cam == None:
-        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
-    #cam = Camera                                          # Only for laptop
-    time.sleep(1)
+    global jpeg_streamer
+    jpeg_streamer = jpeg_streamer_local
+    cam = cam_received
+    # cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    # #cam = Camera()
+    # time.sleep(1)
+
 
 
 # for image acquisition from camera (and flipping)
@@ -28,7 +30,7 @@ def GetImage():
 # Function to apply colour distance filter
 def apply_filter(Calibration_values, img):
     #min_value = 30                                                  # If needed - minimal illumination of the object
-    minsaturation = 40  #(Calibration_values["AvSat"]/2)
+    minsaturation = int(Calibration_values["AvSat"]*2/3)            # was 40
     img = img.toHSV()
     Filtered = img.hueDistance(color = Calibration_values["AvHue"],
                                minsaturation = minsaturation
@@ -94,9 +96,83 @@ def calculate_average(results):
     return Final_result
 
 
+def show_not_found_image(img):
+    img.dl().setFontSize(70)
+    img.dl().text(
+        "Flap was not found",
+        (260, 30),
+        # (img.width, img.width),
+        color=Color.WHITE)
+    img.save(jpeg_streamer)
+
+def show_detected_orange_flap(img, detected_flap, FlapWHRatio, position, flat_ratio, slope_ratio):
+    if position == "Flat position":
+        text_colour = Color.YELLOW
+    else:
+        text_colour = Color.RED
+
+
+    img.dl().rectangle2pts(detected_flap.bottomLeftCorner(),
+                           detected_flap.topRightCorner(),
+                           text_colour, width = 3)
+
+    img.dl().setFontSize(35)
+    # to show the width:
+    width_text = "%s" % detected_flap.width()
+    width_x = int(detected_flap.bottomLeftCorner()[0] + detected_flap.width()/2 - 15)
+    width_y = int(detected_flap.bottomLeftCorner()[1] + 5)
+    img.dl().text(
+        width_text,
+        (width_x,width_y),
+        color=text_colour)
+
+    # to show the height:
+    height_text = "%s" % detected_flap.height()
+    height_x = int(detected_flap.bottomLeftCorner()[0] + detected_flap.width() + 5)
+    height_y = int(detected_flap.bottomLeftCorner()[1] - detected_flap.height()/2 - 10)
+    img.dl().text(
+        height_text,
+        (height_x,height_y),
+        color=text_colour)
+
+    img.dl().setFontSize(40)
+    img.dl().text(
+        ("Detected W/H ratio: %.3f" % (FlapWHRatio)),
+        (20, 500),
+        # (img.width, img.width),
+        color=text_colour)
+    img.dl().text(
+        ("Flat W/H ratio: %.3f" % (flat_ratio)),
+        (20, 540),
+        # (img.width, img.width),
+        color=Color.YELLOW)
+    img.dl().text(
+        ("Slope W/H ratio: %.3f" % (slope_ratio)),
+        (20, 580),
+        # (img.width, img.width),
+        color=Color.RED)
+
+    img.dl().setFontSize(60)
+    img.dl().text(
+        ("Flap position is: %s" % position),
+        (220, 40),
+        color = text_colour)
+    img.save(jpeg_streamer)
+
+def show_scanning_error():
+    img = Image("1024x768.jpg")
+    img.dl().setFontSize(70)
+    img.dl().text(
+        "Error occured during scanning",
+        (170, 30),
+        # (img.width, img.width),
+        color=Color.WHITE)
+
+    img.save(jpeg_streamer)
+
 
 # Main function:
-def do_Orange_Flap_scanning(location_byte): ## DEBUGING TESTING
+def do_Orange_Flap_scanning(cam_received, jpeg_streamer_local, location_byte): ## DEBUGING TESTING
     STORAGE_FILE = "Orange_flap_calibration_data.txt"
     blobs_threshold_main = 240           # 170 on laptop.
                                          # thresholds for calibration blob detection and main process blob detection
@@ -104,7 +180,7 @@ def do_Orange_Flap_scanning(location_byte): ## DEBUGING TESTING
     NUMBER_OF_ITERATIONS = 5
     results = range(NUMBER_OF_ITERATIONS)                  # Initialise results list
 
-    setup()
+    setup(cam_received, jpeg_streamer_local)
 
     #ONLY USED FOR WINDOWS
     #calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
@@ -115,6 +191,7 @@ def do_Orange_Flap_scanning(location_byte): ## DEBUGING TESTING
         print ("Calibration data for flap position detection has not been found. "
                "Please do the calibration first and store its data to "
                "Calibration_files folder before running the scan")
+        show_scanning_error()
         return "Error"                                                    # If error occurs
 
     flat_data = read_calibration_data(calibration_data_location)          # Extract calibration data
@@ -150,9 +227,18 @@ def do_Orange_Flap_scanning(location_byte): ## DEBUGING TESTING
             print "Error - Detected incorrectly"
     print "Result list: ", results
     final_result = calculate_average(results)
+    if final_result == "Error - No flaps found":
+        show_not_found_image(Img)
+    else:
+        show_detected_orange_flap(Img, flap, detectedRatio, final_result, flat_data["FlatWHRatio"], slope_data)
+
     return final_result
 
 # If called by itself:
 if __name__ == '__main__':
+    cam = Camera(0, {"width": 1024, "height": 768})
+    time.sleep(1)
+    js = JpegStreamer("0.0.0.0:8080")
+    time.sleep(1)
     location_byte = 1
-    print do_Orange_Flap_scanning(location_byte)
+    print do_Orange_Flap_scanning(cam, js, location_byte)

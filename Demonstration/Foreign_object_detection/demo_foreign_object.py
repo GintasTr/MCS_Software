@@ -10,7 +10,7 @@ from Demonstration.Foreign_object_detection import Foreign_Object_Detection_Cont
 
 def setup():
     global cam
-    cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    cam = Camera(0, {"width": 960, "height": 720})    # Only for RPI 2592x1944. For calibration - 1024x768
     #cam = Camera                                          # Only for laptop
     time.sleep(1)
 

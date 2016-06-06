@@ -18,7 +18,7 @@ from Orange_Flap_V5 import do_Orange_Flap_scanning
 # Valve handle position detection
 from Valve_Handle_Controlled_V7 import do_Valve_Handle_scanning
 # Hot spot detection
-from Hot_Spot_Detection_Controlled_V4 import do_hot_spot_detection
+from Hot_Spot_Detection_Controlled_V5 import do_hot_spot_detection
 
 # Function to wait for a time period
 def wait_for_scan(time_delay):

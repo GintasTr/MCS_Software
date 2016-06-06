@@ -278,6 +278,6 @@ def do_Valve_Handle_scanning(cam_received):
 
 # If called by itself:
 if __name__ == '__main__':
-    cam = Camera(0, {"width": 1024, "height": 768})
+    cam = Camera(0, {"width": 960, "height": 720})
     output = do_Valve_Handle_scanning(cam)
     print output

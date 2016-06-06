@@ -7,14 +7,17 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 from SimpleCV import *
 from os.path import exists
 
-cam = None
+
 # prepares, selects the camera
-def setup():
+def setup(cam_local, jpeg_streamer_local):
     global cam
-    if cam == None:
-        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
-    #cam = Camera                                          # Only for laptop
-    time.sleep(1)
+    global jpeg_streamer
+    jpeg_streamer = jpeg_streamer_local
+    cam = cam_local
+
+    #     cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    # #cam = Camera                                          # Only for laptop
+    # time.sleep(1)
 
 # Shows the image until the button is pressed
 def show_image_until_pressed(img):
@@ -79,8 +82,8 @@ def MainLedDetection(img, coords, data):
     #MIN_BRIGHTNESS = 100 #240 on laptop                         # Minimal illumination threshold
     #BLOBS_MAX_SIZE = 5000                                       # Specify max size of blob
     #BLOBS_MIN_SIZE = 10                                         # Specify min size of blob
-
-    BLOBS_BRIGHTNESS_THRESHOLD = 220  #230 on laptop            # Define how close to the calibrated colour blobs have to be
+    BINARIZE_BRIGTHENSS_THRESHOLD = 240
+    # BLOBS_BRIGHTNESS_THRESHOLD = 240  #230 on laptop            # Define how close to the calibrated colour blobs have to be
 
     # COLOUR FILTER. NOT USEFULL ON RPI AND WITH LONG DISTANCES
     # img = img.toHSV()                                           # Convert image to HSV colour space
@@ -96,7 +99,7 @@ def MainLedDetection(img, coords, data):
     #detection_mainLED_filtering_time_start = time.time() #TIMING
 
 
-    filtered = img.binarize(thresh = BLOBS_BRIGHTNESS_THRESHOLD)
+    filtered = img.binarize(thresh = BINARIZE_BRIGTHENSS_THRESHOLD)
 
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     #filtered = filtered.morphOpen()                             # Perform morphOps
@@ -225,6 +228,38 @@ def BlobsNumber(img, coords, hsv_data, dist):
     return number_of_blobs
 
 
+def sequence_scanning_image_saved(img, main_blob, crop_width):
+    img.dl().centeredRectangle((main_blob.coordinates()[0],
+                        main_blob.coordinates()[1]),(main_blob.width(),main_blob.height()),
+                        color = Color.RED, width = 2)
+
+    img.dl().rectangle2pts(
+        ((main_blob.coordinates()[0] - crop_width/2), (main_blob.coordinates()[1] + crop_width/2)),
+        ((main_blob.coordinates()[0] + crop_width/2), (main_blob.coordinates()[1] - crop_width/2)),
+        color = Color.YELLOW, width = 2)
+    img.save("image_to_show.jpg")
+
+def sequence_done_image(results_list, average_period):
+    img = Image("image_to_show.jpg")
+
+    img.dl().setFontSize(70)
+    img.dl().text(
+        ("Average period is: %s" % average_period),
+        (230,img.height - 100),
+        color=Color.WHITE)
+    img.save(jpeg_streamer)
+
+
+def show_scanning_error():
+    img = Image("1024x768.jpg")
+    img.dl().setFontSize(70)
+    img.dl().text(
+        "Error occured during scanning",
+        (170, 30),
+        # (img.width, img.width),
+        color=Color.WHITE)
+
+    img.save(jpeg_streamer)
 
 # Function to perform the main sequence scanning
 # Reminder: cal_data = {"max_light": max_light, "min_light": min_light,"m_led_coords": m_led_coords,
@@ -259,13 +294,19 @@ def SequenceScanning(cal_data):
     while not scan_done:                                         # Perform while scanning is not done
         led_sequence = []                                        # Create empty list to store sequence
         live_img = GetImage()                                    # Get live camera image
-        if MainLedDetection(live_img ,m_led_coords,m_led_data) == "No blobs found":
+        blob = MainLedDetection(live_img ,m_led_coords,m_led_data)
+        if blob == "No blobs found":
                                                                  # Check if there is a main LED
             elapsed_time1 = time.time() - start1                # Check how long main LED is not detected
             if elapsed_time1 > FIRST_DETECTION_LIMIT:            # If it is longer than limit
                 return "Error - first LED not found"             # Return error
             continue                                             # Start from the top of the loop
-        print "LED found, starting sequence scanning"            # Notify user about sequence scanning
+        print "LED found, starting sequence scanning"            # Notify user about sequence scanningd
+
+
+        sequence_scanning_image_saved(live_img, blob, int(round(2.5*dist_led)))
+
+
         start2 = time.time()                                    # Mark the start of sequence
         elapsed_old = 0                                          # Initialise for delta T acquisition
         previous_state = "Unknown"                               # Initialise previous LED state variable
@@ -511,10 +552,10 @@ def check_validity(led_sequence, seq_time):
 
 
 ### Main scanning software:
-def do_LED_scanning(location_byte):
+def do_LED_scanning(cam_local, jpeg_streamer_local, location_byte):
     STORAGE_FILE = "LED_sequence_calibration_data.txt"
 
-    setup()
+    setup(cam_local, jpeg_streamer_local)
 
     #ONLY USED FOR WINDOWS
     #calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
@@ -526,6 +567,7 @@ def do_LED_scanning(location_byte):
         print ("Calibration data for this object has not been found. "
                "Please do the calibration first and store its data to "
                "Calibration_files folder before running the scan")
+        show_scanning_error()
         return "Error"                                      # If error occurs - only used when called by other software
 
     calibration_data = read_calibration_data(calibration_data_location)          # Extract calibration data
@@ -534,21 +576,29 @@ def do_LED_scanning(location_byte):
 
     if type(led_sequence) != list:
         if led_sequence.split()[0] == "E" or "e":                     # Check if LED sequence was actually found
+            show_scanning_error()
             return "Error - first LED not found"
 
     # Check if LED was gone for more than half of the sequence time
     results_are_not_valid = check_validity(led_sequence, calibration_data["seq_time"])
 
     if results_are_not_valid:                                     # If results were not valid
+        show_scanning_error()
         return "Error - results are not valid because main LED was lost for too long"
 
     #result = compare_frequency(led_sequence)                # Only for binary results
     result = get_average_period(led_sequence)                # Get average period
     result = ("%f" % round(result,2))[0:4]
 
+    sequence_done_image(led_sequence, result)
+
     return result
 
 # If called by itself:
 if __name__ == '__main__':
+    cam = Camera(0, {"width": 1024, "height": 768})
+    time.sleep(1)
+    js = JpegStreamer("0.0.0.0:8080")
+    time.sleep(1)
     location_byte = 1
-    print do_LED_scanning(location_byte)
+    print do_LED_scanning(cam, js, location_byte)

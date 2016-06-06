@@ -104,7 +104,9 @@ def iterate_for_max_temperature():
     return max_temperature_old                                      # Return the max temperature
 
 # MAIN SOFTWARE FUNCTION
-def do_hot_spot_detection():
+def do_hot_spot_detection(jpeg_streamer_local):
+    global jpeg_streamer
+    jpeg_streamer = jpeg_streamer_local
     # MAIN SOFTWARE:
 
     START_MESSAGE = "Starting hot spot detection"
@@ -166,4 +168,5 @@ def do_hot_spot_detection():
 
 # If called by itself:
 if __name__ == '__main__':
-    print do_hot_spot_detection()
+    js = JpegStreamer("0.0.0.0:8080")
+    print do_hot_spot_detection(js)

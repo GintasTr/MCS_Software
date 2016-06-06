@@ -7,14 +7,17 @@ sys.path.append('/home/pi/MCS_Software')
 from SimpleCV import *
 from os.path import exists
 
-cam = None
 # prepares, selects the camera
-def setup():
+def setup(cam_local, jpeg_streamer_local):
     global cam
-    if cam == None:
-        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
-    #cam = Camera                                          # Only for laptop
-    time.sleep(1)
+    global jpeg_streamer
+    jpeg_streamer = jpeg_streamer_local
+    cam = cam_local
+    #
+    # if cam == None:
+    #     cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    # #cam = Camera                                          # Only for laptop
+    # time.sleep(1)
 
 
 # for image acquisition from camera (and flipping)
@@ -44,13 +47,13 @@ def HandleDetection(img, coords, data):
     min_value = 30                                              # Minimal illumination threshold
                                                                 # Derive minimum saturation. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
-    minsaturation = 150       #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(data["avg_sat"]*2/3) #150       #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 245                                       # Specify blobs colour distance threshold
     blobs_min_size =  100                                       # Specify minimum blobs size
                                                                 # Apply filters to the image
     filtered = img.hueDistance(color = data["avg_hue"],
-                               #minsaturation = minsaturation,
+                               minsaturation = minsaturation,
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
     filtered = filtered.morphClose()                             # Perform morphOps
@@ -95,7 +98,8 @@ def read_calibration_data(STORAGE_LOCATION):
 def scanning_procedure(Handle_coords, colour_data):
     img = GetImage()                                           # Get the image
     Handle = HandleDetection(img, Handle_coords, colour_data)  # Try to detect the handle
-    return Handle                                              # Return the result
+    return_list = {"img": img, "Handle": Handle}
+    return return_list                                              # Return the result
 
 
 # Function to process the results from images.
@@ -142,13 +146,113 @@ def calculate_average(results):
                                                 # Get the max value of the dictionary
     return Final_result
 
+# Show lines with angles to represent comparison
+def angle_comparison_image(closed_angle, open_angle, img, handle,
+                           current_position, angle_inverse):
+    LENGTH = 150             # Pixels
+    current_angle = handle.angle()
+    if current_position == "Closed":
+        text_colour = Color.RED
+    elif current_position == "Open":
+        text_colour = Color.YELLOW
+    else:
+        text_colour = Color.BLUE
+        handle_position = "Not found"
+
+    img.dl().setFontSize(50)
+    img.dl().text(
+        ("Detected angle is closer to %s angle" % current_position),
+        (185, 30),
+        color=text_colour)
+
+    img.dl().setFontSize(40)
+    img.dl().text(
+        ("Detected angle: %.2f" % current_angle),
+        (20, 480),
+        # (img.width, img.width),
+        color=Color.BLUE)
+    img.dl().text(
+        ("Open angle: %.2f" % open_angle),
+        (20, 520),
+        # (img.width, img.width),
+        color=Color.YELLOW)
+    img.dl().text(
+        ("Closed angle: %.2f" % closed_angle),
+        (20, 560),
+        # (img.width, img.width),
+        color=Color.RED)
+    img.dl().text(
+        ("Distance to %s angle: %.1f" % (current_position, round(angle_inverse,2))),
+        (275, img.height - 100),
+        color= text_colour,
+        alpha = 255)
+
+
+    # Draw CLOSED LINES (RED)
+    closed_angle_radians = math.radians(closed_angle)
+    y_offset = int(round(LENGTH * math.sin(closed_angle_radians)))
+    x_offset = int(round(LENGTH * math.cos(closed_angle_radians)))
+
+    img.dl().line(start=handle.bottomLeftCorner(),
+                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
+                  color = Color.RED, width = 3)
+    img.dl().line(start=handle.bottomLeftCorner(),
+                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
+                  color = Color.RED, width = 3)
+
+    # Draw OPEN LINES (GREEN)
+    open_angle_radians = math.radians(open_angle)
+    y_offset = int(round(LENGTH * math.sin(open_angle_radians)))
+    x_offset = int(round(LENGTH * math.cos(open_angle_radians)))
+
+    img.dl().line(start=handle.bottomLeftCorner(),
+                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
+                  color = Color.YELLOW, width = 3)
+    img.dl().line(start=handle.bottomLeftCorner(),
+                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
+                  color = Color.YELLOW, width = 3)
+
+    # Draw CURRENT LINES (BLUE)
+    current_angle_radians = math.radians(current_angle)
+    y_offset = int(round(LENGTH * math.sin(current_angle_radians)))
+    x_offset = int(round(LENGTH * math.cos(current_angle_radians)))
+
+    img.dl().line(start=handle.bottomLeftCorner(),
+                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
+                  color = Color.BLUE, width = 3)
+    img.dl().line(start=handle.bottomLeftCorner(),
+                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
+                  color = Color.BLUE, width = 3)
+    img.save(jpeg_streamer)
+
+def show_not_found_image(img):
+    img.dl().setFontSize(70)
+    img.dl().text(
+        "Valve was not found",
+        (260, 30),
+        # (img.width, img.width),
+        color=Color.WHITE)
+    img.save(jpeg_streamer)
+
+def show_scanning_error():
+    img = Image("1024x768.jpg")
+    img.dl().setFontSize(70)
+    img.dl().text(
+        "Error occured during scanning",
+        (170, 30),
+        # (img.width, img.width),
+        color=Color.WHITE)
+
+    img.save(jpeg_streamer)
+
+
 
 # MAIN SOFTWARE FUNCTION:
-def do_Valve_Handle_scanning():
+def do_Valve_Handle_scanning(cam_local, jpeg_streamer_local):
     # MAIN SOFTWARE:
     STORAGE_FILE = "valve_handle_data.txt"
 
-    setup()                                                 # Perform camera setup
+    setup(cam_local, jpeg_streamer_local)                                                 # Perform camera setup
 
     #ONLY USED FOR WINDOWS
     #calibration_data_location = os.path.join(os.path.dirname(__file__), 'Calibration_files\\', STORAGE_FILE)
@@ -160,6 +264,7 @@ def do_Valve_Handle_scanning():
         print ("Calibration data for this object has not been found. "
                "Please do the calibration first and store its data to "
                "Calibration_files folder before running the scan")
+        show_scanning_error()
         return "Error"                                      # If error occurs - only used when called by other software
 
     n = 5                                                   # NUMBER OF SAMPLE IMAGES
@@ -191,7 +296,8 @@ def do_Valve_Handle_scanning():
     open_angle_detected_average, closed_angle_detected_average, open_angle_numbers, closed_angle_numbers = 0, 0, 0, 0
 
     for i in range(0, len(results)):
-        result = scanning_procedure(Handle_coords,colour_data)
+        result_list = scanning_procedure(Handle_coords,colour_data)
+        result = result_list["Handle"]
         processed_result = process_a_result(result, closed_angle_stored, open_angle_stored)
                                                                 # Returns dictionary {"position", "angle_info"}
         results[i] = processed_result["position"]
@@ -206,6 +312,12 @@ def do_Valve_Handle_scanning():
             closed_angle_detected_average = closed_angle_detected_average + processed_result["angle_info"]
             closed_angle_numbers += 1
 
+    # Use last known data
+    if processed_result["position"] == "Error - No blobs found":
+        show_not_found_image(result_list["img"])
+    else:
+        angle_comparison_image(closed_angle_stored, open_angle_stored, result_list["img"],
+                           result_list["Handle"], processed_result["position"], processed_result["angle_info"])
         #print results[i]        # TESTING
 
     final_result = calculate_average(results)
@@ -228,5 +340,9 @@ def do_Valve_Handle_scanning():
 
 # If called by itself:
 if __name__ == '__main__':
-    output = do_Valve_Handle_scanning()
+    cam = Camera(0, {"width": 1024, "height": 768})
+    time.sleep(1)
+    js = JpegStreamer("0.0.0.0:8080")
+    time.sleep(1)
+    output = do_Valve_Handle_scanning(cam, js)
     print output

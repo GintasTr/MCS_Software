@@ -7,14 +7,16 @@ sys.path.append('/home/pi/MCS_Software')                    # Only for RPI
 from SimpleCV import *
 from os.path import exists
 
-cam = None
 # prepares, selects the camera
-def setup():
+def setup(cam_local, jpeg_streamer_local):
     global cam
-    if cam == None:
-        cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
-    #cam = Camera                                          # Only for laptop
-    time.sleep(1)
+    global jpeg_streamer
+    jpeg_streamer = jpeg_streamer_local
+    cam = cam_local
+    # if cam == None:
+    #     cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    # #cam = Camera                                          # Only for laptop
+    # time.sleep(1)
 
 
 # for image acquisition from camera (and flipping)
@@ -33,7 +35,7 @@ def ObjectDetection(img, coords, data, object_area):
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     min_area = object_area/4                                    # Derive minimum and maximum area objects can take
     max_area = object_area*4
-    minsaturation = 150         #(data["avg_sat"]- Std_constant * data["std_sat"])
+    minsaturation = int(data["avg_sat"]*2/3)#150         #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
     blobs_threshold = 230 #170 on laptop                        # Specify blobs colour distance threshold
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
@@ -87,7 +89,8 @@ def scanning_procedure(object_coords, colour_data, object_area):
     img = GetImage()                                                   # Get the image
     foreign_object = ObjectDetection(img, object_coords, colour_data, object_area)
                                                                        # Try to detect the object
-    return foreign_object                                              # Return the result
+    foreign_object_list = {"foreign_object": foreign_object, "img": img}
+    return foreign_object_list                                              # Return the result
 
 
 # Function to process the results from images
@@ -116,9 +119,54 @@ def calculate_average(results):
     return Final_result
 
 
+def show_scanning_error():
+    img = Image("1024x768.jpg")
+    img.dl().setFontSize(70)
+    img.dl().text(
+        "Calibration is not done for this object",
+        (140, 30),
+        # (img.width, img.width),
+        color=Color.WHITE)
+
+    img.save(jpeg_streamer)
+
+def scanning_object_not_found(img):
+    img.dl().setFontSize(50)
+    img.dl().text(
+        "Specified foreign object was not found",
+        (150, 200),
+        # (img.width, img.width),
+        color=Color.WHITE)
+
+    img.save(jpeg_streamer)
+
+# If object is found, show found blobs
+def show_filtered_image(img, foreign_object):
+
+    img.dl().setFontSize(70)
+    img.dl().text(
+        "Possible foreign objects",
+        (220, 60),
+        # (img.width, img.width),
+        color=Color.WHITE)
+
+    img.dl().setFontSize(40)
+    img.dl().text(
+        "Similar foreign object was detected at: X - %i, Y - %i" %
+        (foreign_object.coordinates()[0],foreign_object.coordinates()[1]),
+        (140, 600),
+        # (img.width, img.width),
+        color=Color.WHITE)
+
+    foreign_object.draw(color = Color.GREEN,width=3, layer = img.dl())
+    img.save(jpeg_streamer)
+
+
+
+
 ### MAIN SOFTWARE:
-def detect_foreign_object(calibration_name):
-    setup()
+def detect_foreign_object(cam_local, jpeg_streamer_local, calibration_name):
+    setup(cam_local, jpeg_streamer_local)
 
     NAME_OF_FOREIGN_OBJECT = calibration_name               # NAME OF THE FOREIGN OBJECT WHICH IS DETECTED.
                                                             # ALSO NAME OF THE FILE WITH CALIBRATION DATA
@@ -137,6 +185,7 @@ def detect_foreign_object(calibration_name):
         print ("Calibration data for this object has not been found. "
                "Please do the calibration first and store its data to "
                "Calibration_files folder before running the scan")
+        show_scanning_error()
         return "Error"                                      # If error occurs - only used when called by other software
 
     # Read and store the calibration data
@@ -167,8 +216,8 @@ def detect_foreign_object(calibration_name):
     for i in range(0, len(results)):
 
         # Try to detect foreign object TODO: Implement aspect ratio and sqare distance measurements, modify the filtering values
-        foreign_object_present = scanning_procedure(object_coords,colour_data, object_area)
-
+        foreign_object_present_list = scanning_procedure(object_coords,colour_data, object_area)
+        foreign_object_present = foreign_object_present_list["foreign_object"]
         processed_result = process_a_result(foreign_object_present)
         results[i] = processed_result
 
@@ -177,6 +226,11 @@ def detect_foreign_object(calibration_name):
             found_object_y = foreign_object_present.coordinates()[1]
 
         #print results[i]                                           # Used for debugging
+
+    if processed_result == "No blobs found":
+        scanning_object_not_found(foreign_object_present_list["img"])
+    else:
+        show_filtered_image(foreign_object_present_list["img"], foreign_object_present_list["foreign_object"])
 
     final_result = calculate_average(results)
 
@@ -198,5 +252,9 @@ def detect_foreign_object(calibration_name):
 
 # If called by itself, just so that it does not show error when something is returned
 if __name__ == '__main__':
-    result = detect_foreign_object("Green_breadboard")
+    cam = Camera(0, {"width": 1024, "height": 768})
+    time.sleep(1)
+    js = JpegStreamer("0.0.0.0:8080")
+    time.sleep(1)
+    result = detect_foreign_object(cam, js, "Green_breadboard")
     print "Result returned from the module: ", result

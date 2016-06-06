@@ -270,7 +270,7 @@ class Pallete_generation:
 
         return colormap
 
-    def generate_pallete(self, width, height):
+    def generate_pallete_image(self, width, height):
         palette = np.array(self.get_colormap(),np.uint8)
         number = range(0,256)
         image_list = [number]*width
@@ -283,8 +283,13 @@ class Pallete_generation:
         # cv2.imshow("window", pallete_scaled)
         cv2.imwrite(self.PALLETE_FILE_NAME, pallete_scaled)
 
+    def get_pallete_numpy_array(self):
+        palette = np.array(self.get_colormap(),np.uint8)
+        return palette
+
+
     def get_pallete_image(self, width, height):
-        self.generate_pallete(width, height)
+        self.generate_pallete_image(width, height)
         img = Image(self.PALLETE_FILE_NAME)
         return img
 

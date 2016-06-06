@@ -173,9 +173,6 @@ def end_multiple_scanning_results(final_result, object_coord_x, object_coord_y):
     (285,50),
     color=Color.WHITE)
 
-
-
-
     screen.show_till_press_enter(img)
 
 

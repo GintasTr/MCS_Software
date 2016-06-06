@@ -19,12 +19,24 @@ from Orange_Flap_V5 import do_Orange_Flap_scanning
 # Valve handle position detection
 from Valve_Handle_Controlled_V7 import do_Valve_Handle_scanning
 # Hot spot detection
-from Hot_Spot_Detection_Controlled_V4 import do_hot_spot_detection
+from Hot_Spot_Detection_Controlled_V5 import do_hot_spot_detection
+
+# Setup the camera object to be passed to scanning software
+def setup():
+    global cam
+    global jpeg_streamer
+    jpeg_streamer = JpegStreamer("0.0.0.0:8080")
+    time.sleep(1)
+    cam = Camera(0, {"width": 1024, "height": 768})    # Only for RPI 2592x1944. For calibration - 1024x768
+    #cam = Camera                                          # Only for laptop
+    time.sleep(1)
+
 
 # Function to wait for a time period
 def wait_for_scan(time_delay):
     print "Waiting for %i seconds" % time_delay
     time.sleep(time_delay)
+
 
 # Function to read communications output
 def read_comms_output(I2C_DEVICE_ADDR):
@@ -155,8 +167,8 @@ def encode_message_to_comms(message_to_comms):
 # Decoded outputs - 11111 (for "Slope position"), 00000 (for "Flat posititon") and "Error" for any error.
 def start_and_decode_orange_flap_scan(location_byte):
     ## Orange flap scanning
-    #fault_detection_output = do_Orange_Flap_scanning(location_byte)    # Start the scan
-    fault_detection_output = "Error" #"Flat position" #"Slope position" # "Error"              # DEBUGGING
+    fault_detection_output = do_Orange_Flap_scanning(cam, jpeg_streamer, location_byte)    # Start the scan
+    # fault_detection_output = "Error" #"Flat position" #"Slope position" # "Error"              # DEBUGGING
     if fault_detection_output[0] == ("E" or "e"):                       # If output starts with E or e
         return "Error"                                                  # Return error
     elif fault_detection_output[0] == ("S" or "s"):                     # If output starts with S or s (Slope)
@@ -173,8 +185,8 @@ def start_and_decode_orange_flap_scan(location_byte):
 # Decoded outputs - "Error" for error, first byte - location, other 4 - frequency, last 4 - DO NOT CARE
 def start_and_decode_LED_sequence_scan(location_byte):
     ## LED Scanning
-    fault_detection_output = "12.2" #"1.42"  #"Error"         # DEBUGGING
-    #fault_detection_output = do_LED_scanning(location_byte)
+    # fault_detection_output = "12.2" #"1.42"  #"Error"         # DEBUGGING
+    fault_detection_output = do_LED_scanning(cam, jpeg_streamer, location_byte)
     if fault_detection_output[0] == ("E" or "e"):               # If output starts with E or e
         return "Error"                                          # Return error
     else:
@@ -188,10 +200,10 @@ def start_and_decode_LED_sequence_scan(location_byte):
 # Decoded outputs - 1 (for "Closed"), 0 (for "Open") and "Error" for any error.
 def start_and_decode_coolant_valve_scan():
     ## Valve handle scanning
-    fault_detection_output = {"angle_information": "1.",        # DEBUGGING
-                              "fault_detection_feedback": "Open"#"Closed" #"Open" #"Error"
-                              }
-    #fault_detection_output = do_Valve_Handle_scanning()
+    # fault_detection_output = {"angle_information": "1.",        # DEBUGGING
+    #                           "fault_detection_feedback": "Open"#"Closed" #"Open" #"Error"
+    #                           }
+    fault_detection_output = do_Valve_Handle_scanning(cam, jpeg_streamer)
     if fault_detection_output["fault_detection_feedback"][0] == ("E" or "e"):
                                                                 # If output starts with E or e
         return "Error"                                          # Return error
@@ -213,20 +225,22 @@ def start_and_decode_coolant_valve_scan():
 def start_and_decode_foreign_object_scan(object_selection):
     if object_selection == 1:                                   # Selection of foreign objects. If 1 - Green_breadboard
         FOREIGN_OBJECT = "Green_breadboard"
-    if object_selection == 2:                                   # Selection of foreign objects. If 2 - Red_Glue
+    elif object_selection == 2:                                   # Selection of foreign objects. If 2 - Red_Glue
         FOREIGN_OBJECT = "Red_Glue"
-    if object_selection == 3:                                   # Selection of foreign objects. Undefined yet.
+    elif object_selection == 3:                                   # Selection of foreign objects. Undefined yet.
         FOREIGN_OBJECT = "3"
-    if object_selection == 4:                                   # Selection of foreign objects. Undefined yet.
+    elif object_selection == 4:                                   # Selection of foreign objects. Undefined yet.
         FOREIGN_OBJECT = "4"
-    if object_selection == 5:                                   # Selection of foreign objects. Undefined yet.
+    elif object_selection == 5:                                   # Selection of foreign objects. Undefined yet.
         FOREIGN_OBJECT = "5"
+    else:
+        FOREIGN_OBJECT= "Unknown"
 
     ## Foreign object scanning
-    #fault_detection_output = detect_foreign_object(FOREIGN_OBJECT)
-    fault_detection_output = {"fault_detection_feedback": "Error", #"Object found", #"Error"
-                              "object_coord_x": "0001",
-                              "object_coord_y": "9999"}
+    fault_detection_output = detect_foreign_object(cam, jpeg_streamer, FOREIGN_OBJECT)
+    # fault_detection_output = {"fault_detection_feedback": "Error", #"Object found", #"Error"
+    #                           "object_coord_x": "0001",
+    #                           "object_coord_y": "9999"}
 
     if fault_detection_output["fault_detection_feedback"][0] == ("E" or "e"):
                                                                 # If output starts with E or e
@@ -251,10 +265,10 @@ def start_and_decode_foreign_object_scan(object_selection):
 # Decoded outputs - 000.0-999.9 for hottest spot temperature in the image, x coords 0-80, y cords 0-60.
 def start_and_decode_hot_spots_scan():
     ## Hot spots scanning
-    fault_detection_output= {"fault_detection_feedback": "12.53", #"000.0" #"Error"
-                           "max_pixel_locations_x": "00",
-                           "max_pixel_locations_y": "99"}
-    #fault_detection_output = do_hot_spot_detection()
+    # fault_detection_output= {"fault_detection_feedback": "12.53", #"000.0" #"Error"
+    #                        "max_pixel_locations_x": "00",
+    #                        "max_pixel_locations_y": "99"}
+    fault_detection_output = do_hot_spot_detection(jpeg_streamer)
     if fault_detection_output["fault_detection_feedback"][0] == ("E" or "e"):
                                                                 # If output starts with E or e
         return "Error"                                          # Return error
@@ -318,8 +332,8 @@ def start_communications():
     TIME_DELAY_ACTIVE = 1                                       # Active scanning time delay
     TIME_DELAY_IDLE = 60                                        # Idle scanning time delay
 
-    #setup()
-                                                                # Info to user about shutdown
+    setup()
+
     global bus
     bus = smbus.SMBus(I2C_DEVICE_BUS)                           # Initialise I2C bus
 

@@ -20,6 +20,10 @@ class Temperature_data:
 
         max_temperature = self.temperature_from_raw(max_raw_pixel)           # Gets the temperature equivalent of max raw value
 
+        min_raw_pixel = raw_values.min()
+
+        min_temperature = self.temperature_from_raw(min_raw_pixel)           # Gets the temperature equivalent of max raw value
+
         ### DEBUG:
         # REPORT = "Max value is: " + str(max_raw_pixel) + \
         #          " Max value locations are: X - " + str(max_pixel_locations_x) + \
@@ -31,7 +35,8 @@ class Temperature_data:
                 "max_pixel_locations_x": max_pixel_locations_x,
                 "max_pixel_locations_y": max_pixel_locations_y,
                 "max_temperature": max_temperature,
-                "raw_values": raw_values}
+                "raw_values": raw_values,
+                "min_temperature": min_temperature}
 
 
     # Function to calculate temperature from raw value
@@ -48,7 +53,8 @@ class Temperature_data:
                                "max_pixel_locations_x": 0,
                                "max_pixel_locations_y": 0,
                                "max_temperature": 0,
-                               "raw_values": 0}
+                               "raw_values": 0,
+                               "min_temperature": 0}
                                                                         # Initialize variable
         for i in range(0, ITERATIONS-1):                                # Repeat as required by Iterations
             time.sleep(0.2)
@@ -60,3 +66,14 @@ class Temperature_data:
                 continue                                                # Else keep the old max temperature and continue
 
         return max_temperature_old                                      # Return the max temperature
+
+    def single_scan_for_max_temperature(self):
+        lepton_interface = Lepton_interface()
+        # time.sleep(0.2)
+        raw_values = lepton_interface.get_raw_values()              # Get camera output (raw values)
+        max_temperature_old = self.get_max_temperature_data(raw_values)  # Get the maximum temperature from raw values
+
+        return max_temperature_old                                      # Return the max temperature
+
+    def get_min_temperature(self, raw_values):
+            min_raw_pixel = raw_values.max()                                # Get the maximum pixel value

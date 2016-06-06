@@ -309,7 +309,7 @@ def do_calibration_procedure(cam_received):
 
 # If called by itself, perform calibration
 if __name__ == '__main__':
-    cam = Camera(0, {"width": 1024, "height": 768})        # Only for RPI 2592x1944. For calibration - 1024x768
+    cam = Camera(0, {"width": 960, "height": 720})        # Only for RPI 2592x1944. For calibration - 1024x768
     file_name = do_calibration_procedure(cam)
 
 
