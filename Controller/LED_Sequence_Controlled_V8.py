@@ -244,8 +244,8 @@ def sequence_done_image(results_list, average_period):
 
     img.dl().setFontSize(70)
     img.dl().text(
-        ("Average period is: %s" % average_period),
-        (230,img.height - 100),
+        (("Average period is: %s" % average_period)),
+        (230, 60),
         color=Color.WHITE)
     img.save(jpeg_streamer)
 

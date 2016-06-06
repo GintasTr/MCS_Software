@@ -9,8 +9,6 @@ from Demonstration.Hot_spot_detection.display_interaction import display_interac
 from Demonstration.Hot_spot_detection.Background_generation import background_operations
 from Demonstration.Hot_spot_detection.Hot_spot_scanning_images import hot_spot_scanning_images
 
-demo_images = hot_spot_scanning_images()
-
 # MAIN SOFTWARE FUNCTION
 def do_hot_spot_detection(jpeg_streamer_local):
     global jpeg_streamer

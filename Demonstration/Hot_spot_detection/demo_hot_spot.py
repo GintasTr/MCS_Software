@@ -97,7 +97,7 @@ def do_hot_spot_detection():
         show_demo = screen.show_briefly_till_n(img)
 
 
-    demo_images.show_final_result(fault_detection_feedback,
+    demo_images.show_final_result(img, fault_detection_feedback,
                                   hottest_spot_x,
                                   hottest_spot_y)
         # if Warning:

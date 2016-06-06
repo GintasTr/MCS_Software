@@ -18,7 +18,7 @@ class hot_spot_scanning_images():
         img.dl().setFontSize(70)
         img.dl().text(
             "Hot spot detection",
-            (250,img.height/3),
+            (260,img.height/3),
             # (img.width, img.width),
             color=Color.WHITE)
         img.dl().text(
@@ -29,7 +29,7 @@ class hot_spot_scanning_images():
 
         self.screen.show_till_press_enter(img)
 
-    def show_final_result(self, max_temperature, x_location, y_location):
+    def show_final_result(self, img, max_temperature, x_location, y_location):
         img.dl().setFontSize(70)
         img.dl().text(
             "Final result is:",
