@@ -20,13 +20,14 @@ def setup(cam_local):
 
 # for image acquisition from camera (and flipping)
 def GetImage():
-    img = cam.getImage()
-    #img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipVertical()
+    # img = cam.getImage()
+    img = cam.getImage()        ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS? ###COMMENT OUT
+    #img = img.flipVertical()        ###COMMENT IN
+    img = img.flipHorizontal()
     return img
 
 
-# Function to detect valve Handle:
+# Function to detect foreign object:
 def ObjectDetection(img, coords, data, object_area):
     #Std_constant = 5                                            # Describes how many std dev of value to include
     min_value = 30                                              # Minimal illumination threshold
@@ -36,13 +37,19 @@ def ObjectDetection(img, coords, data, object_area):
     max_area = object_area*4
     minsaturation = int(2*data["avg_sat"]/3)         #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 230 #170 on laptop                        # Specify blobs colour distance threshold
-                                                                # Apply filters to the image TODO: calibrate or change the filtering
+    blobs_threshold = 240 #170 on laptop                        # Specify blobs colour distance threshold
+                                                                # Apply filters to the image
     filtered = img.hueDistance(color = data["avg_hue"],
                                minsaturation = minsaturation,
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    filtered = filtered.morphClose()                            # Perform morphOps TODO: look for better options
+
+    # filtered = filtered.morphClose()                            # Perform morphOps
+
+
+    filtered = filtered.erode(iterations= 2)
+    filtered = filtered.dilate(iterations= 2)
+
     all_blobs = filtered.findBlobs(threshval = blobs_threshold,
                                    minsize= min_area,
                                    maxsize = max_area )
@@ -63,13 +70,20 @@ def object_detection_show(img, coords, data, object_area):
     max_area = object_area*4
     minsaturation = int(2*data["avg_sat"]/3)                    #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 230 #170 on laptop                        # Specify blobs colour distance threshold
+    blobs_threshold = 240 #170 on laptop                        # Specify blobs colour distance threshold
                                                                 # Apply filters to the image TODO: calibrate or change the filtering
     filtered = img.hueDistance(color = data["avg_hue"],
                                minsaturation = minsaturation,
                                minvalue = min_value)
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    filtered = filtered.morphClose()                            # Perform morphOps TODO: look for better options
+
+
+    # filtered = filtered.morphClose()                            # Perform morphOps TODO: look for better options
+
+    filtered = filtered.erode(iterations= 2)
+    filtered = filtered.dilate(iterations= 2)
+
+
     all_blobs = filtered.findBlobs(threshval = blobs_threshold,
                                    minsize= min_area,
                                    maxsize = max_area )
@@ -249,5 +263,5 @@ def detect_foreign_object(cam_local, calibration_name):
 # If called by itself, just so that it does not show error when something is returned
 if __name__ == '__main__':
     cam = Camera(0, {"width": 960, "height": 720})    # Only for RPI 2592x1944. For calibration - 1024x768
-    result = detect_foreign_object(cam, "Green_breadboard")
+    result = detect_foreign_object(cam, "1")
     print "Result returned from the module: ", result

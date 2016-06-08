@@ -80,9 +80,10 @@ def MainLedDetection(img, coords, data):
     #                            )
 
     filtered = img.binarize(thresh = BLOBS_BRIGHTNESS_THRESHOLD)
-
+    # filtered.show()
     filtered = filtered.invert()                                # Invert black and white (to have LED as white)
-    #filtered = filtered.morphOpen()                             # Perform morphOps
+    filtered = filtered.morphOpen()                             # Perform morphOps
+    # filtered = filtered.erode(1)
 
     filtered = filtered.dilate(1)
 
@@ -92,7 +93,7 @@ def MainLedDetection(img, coords, data):
                                                                 # Look for blobs
     all_blobs = filtered.findBlobs(
                                 #maxsize=BLOBS_MAX_SIZE,
-                                #minsize= 1,                    # Only for low resolutions
+                                # minsize= 1,                    # Only for low resolutions
                                 #threshval = BLOBS_BRIGHTNESS_THRESHOLD
                                     )
 
@@ -109,7 +110,7 @@ def MainLedDetection(img, coords, data):
 
 # Function to measure average illumination around LEDs TODO: Think about implementing threshold filter instead
 def GetLight(img, coords, hsv_data, dist):
-    dist_scalar = 3                                             # Margin of distance to include both LEDs
+    dist_scalar = 3                                            # Margin of distance to include both LEDs
     crop_length = int(round(dist_scalar*dist))
     main_blob = MainLedDetection(img,coords,hsv_data)           # Get main led blob. As a reminder: hsv_data =
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
@@ -159,8 +160,10 @@ def BlobsNumber(img, coords, hsv_data, dist):
     cropped = cropped.binarize(thresh=bin_thresh)               # Binarize the cropped image
     cropped = cropped.invert()                                  # Invert so that light areas are white
     cropped = cropped.morphOpen()
-    cropped = cropped.erode(iterations = 1)                     # FOR BIGGER RANGE
-    cropped = cropped.dilate(iterations = 1)                      # If from close - change to 1
+    # cropped = cropped.erode(iterations = 1)                     # FOR BIGGER RANGE
+    # filtered = cropped.erode(1)
+
+    cropped = cropped.dilate(iterations = 1)                    # If from close - change to 1
 
 
     all_blobs = cropped.findBlobs(

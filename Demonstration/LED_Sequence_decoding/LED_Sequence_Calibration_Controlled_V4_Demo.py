@@ -151,8 +151,8 @@ def GetColourData(img, coords):
     # # print minSat, "- min Sat"
     # # print meanValue, " - min Val"
 
-    hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
-    # print hue_hist #TEST DEBUGGING
+    hue_hist = np.histogram(cropped.toHSV().getNumpy()[:,:,2], range = (0.0, 255.0), bins = 255)[0]  # Check if histogram rolls over (object is red.)
+
 
     if hue_hist[0] and hue_hist[-1]  != 0:
         max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location

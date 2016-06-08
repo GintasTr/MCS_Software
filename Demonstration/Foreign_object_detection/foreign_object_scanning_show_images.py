@@ -90,11 +90,6 @@ def scanning_object_not_found(img):
         (150, 200),
         # (img.width, img.width),
         color=Color.WHITE)
-    img.dl().text(
-        "Press Enter",
-        (350,img.height - 120),
-        # (img.width, img.width),
-        color=Color.WHITE)
 
     return screen.show_briefly_till_n(img)
 

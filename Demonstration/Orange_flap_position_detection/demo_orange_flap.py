@@ -21,7 +21,7 @@ def setup():
 if __name__ == '__main__':
     location_bit = 5
     setup()
-    Orange_Flap_Calibration_V3_Demo.perform_calibration_procedure(cam)
+    # Orange_Flap_Calibration_V3_Demo.perform_calibration_procedure(cam)
     Orange_Flap_V5_Demo.do_Orange_Flap_scanning(cam, location_bit)
 
 

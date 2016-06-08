@@ -84,11 +84,7 @@ def scanning_handle_not_found(img):
         (245, 30),
         # (img.width, img.width),
         color=Color.WHITE)
-    img.dl().text(
-        "Press Enter",
-        (340,img.height - 120),
-        # (img.width, img.width),
-        color=Color.WHITE)
+
 
     return screen.show_briefly_till_n(img)
 
@@ -141,11 +137,11 @@ def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle,
     y_offset = int(round(LENGTH * math.sin(closed_angle_radians)))
     x_offset = int(round(LENGTH * math.cos(closed_angle_radians)))
 
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
+    img.dl().line(start=handle.bottomRightCorner(),
+                  stop=((handle.bottomRightCorner()[0] + x_offset),(handle.bottomRightCorner()[1] + y_offset)),
                   color = Color.RED, width = 3)
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
+    img.dl().line(start=handle.bottomRightCorner(),
+                  stop=((handle.bottomRightCorner()[0] - x_offset),(handle.bottomRightCorner()[1] - y_offset)),
                   color = Color.RED, width = 3)
 
     # Draw OPEN LINES (GREEN)
@@ -153,11 +149,11 @@ def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle,
     y_offset = int(round(LENGTH * math.sin(open_angle_radians)))
     x_offset = int(round(LENGTH * math.cos(open_angle_radians)))
 
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
+    img.dl().line(start=handle.bottomRightCorner(),
+                  stop=((handle.bottomRightCorner()[0] + x_offset),(handle.bottomRightCorner()[1] + y_offset)),
                   color = Color.YELLOW, width = 3)
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
+    img.dl().line(start=handle.bottomRightCorner(),
+                  stop=((handle.bottomRightCorner()[0] - x_offset),(handle.bottomRightCorner()[1] - y_offset)),
                   color = Color.YELLOW, width = 3)
 
     # Draw CURRENT LINES (BLUE)
@@ -165,11 +161,11 @@ def angle_comparison_image(current_angle, closed_angle, open_angle, img, handle,
     y_offset = int(round(LENGTH * math.sin(current_angle_radians)))
     x_offset = int(round(LENGTH * math.cos(current_angle_radians)))
 
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] + x_offset),(handle.bottomLeftCorner()[1] + y_offset)),
+    img.dl().line(start=handle.bottomRightCorner(),
+                  stop=((handle.bottomRightCorner()[0] + x_offset),(handle.bottomRightCorner()[1] + y_offset)),
                   color = Color.BLUE, width = 3)
-    img.dl().line(start=handle.bottomLeftCorner(),
-                  stop=((handle.bottomLeftCorner()[0] - x_offset),(handle.bottomLeftCorner()[1] - y_offset)),
+    img.dl().line(start=handle.bottomRightCorner(),
+                  stop=((handle.bottomRightCorner()[0] - x_offset),(handle.bottomRightCorner()[1] - y_offset)),
                   color = Color.BLUE, width = 3)
 
 

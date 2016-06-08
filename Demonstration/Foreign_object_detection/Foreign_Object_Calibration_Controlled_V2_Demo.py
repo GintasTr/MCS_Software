@@ -22,7 +22,9 @@ def setup(cam_received):
 def GetImage():
     #img = cam.getImage() ###COMMENT OUT
     img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipVertical()
+    # img = img.flipVertical()
+    img = img.flipHorizontal()
+
     return img
 
 # Shows the image until the button is pressed
@@ -154,7 +156,7 @@ def GetColourData(img, coords):
     minSat = np.min(cropped_num[:,:,1])                             # Slice the NumPy array to get the min Sat
     meanValue = np.mean(cropped_num[:,:,2])                         # Slice the NumPy array to get the mean Brightness
 
-    hue_hist = cropped.hueHistogram()                               # Check if histogram rolls over (object is red.)
+    hue_hist = np.histogram(cropped.toHSV().getNumpy()[:,:,2], range = (0.0, 255.0), bins = 255)[0]  # Check if histogram rolls over (object is red.)
     if (hue_hist[1] != 0) and (hue_hist[0] != 0) and (hue_hist[-1] != 0) and (hue_hist[-2] != 0):
         print hue_hist
         max_index = hue_hist.argmax()                               # If red, then get maximum hue histogram location

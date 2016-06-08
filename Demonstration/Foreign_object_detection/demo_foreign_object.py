@@ -21,7 +21,7 @@ def setup():
 if __name__ == '__main__':
     setup()
     # object_name = Foreign_Object_Calibration_Controlled_V2_Demo.do_calibration_procedure(cam)
-    Foreign_Object_Detection_Controlled_V3_Demo.detect_foreign_object(cam, "valve_handle")
+    Foreign_Object_Detection_Controlled_V3_Demo.detect_foreign_object(cam, "red_object")
 
 
     #

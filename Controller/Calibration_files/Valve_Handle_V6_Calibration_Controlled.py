@@ -19,7 +19,7 @@ def setup():
 def GetImage():
     #img = cam.getImage()
     img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipVertical()
+    # img = img.flipVertical()
     return img
 
 
@@ -102,7 +102,7 @@ def correct_blob_confirmation(handle, img):
     QUESTION_TO_ASK = "Does the valve handle have red square around it in the picture? Y/N"
 
     test_img = img
-    handle.drawMinRect(layer=test_img.dl(), color = Color.RED, width = 3)
+    handle.drawMinRect(layer=test_img.dl(), color = Color.RED, width = 3, alpha=255)
     print TEXT_WHILE_IMAGE
     show_image_until_pressed(test_img)
     correct_blob = GetConfirmation(QUESTION_TO_ASK)

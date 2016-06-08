@@ -49,7 +49,7 @@ def HandleDetection(img, coords, data):
                                                                 # {"avg_hue": meanHue, "avg_sat": meanSat, "std_sat": stdSat}
     minsaturation = int(2*data["avg_sat"]/3)       #(data["avg_sat"]- Std_constant * data["std_sat"])
     img = img.toHSV()                                           # Convert image to HSV colour space
-    blobs_threshold = 245                                       # Specify blobs colour distance threshold
+    blobs_threshold = 240                                       # Specify blobs colour distance threshold
     blobs_min_size = 500                                       # Specify minimum blobs size
                                                                 # Apply filters to the image
     filtered = img.hueDistance(color = data["avg_hue"],
@@ -237,7 +237,7 @@ def do_Valve_Handle_scanning(cam_received):
         show_scanning = process_a_result_shown(result_shown, closed_angle_stored,
                                                         open_angle_stored,result_dictionary_shown["img"])
 
-    start_multiple_scanning()
+    # start_multiple_scanning()
     for i in range(0, len(results)):
         result_dictionary_shown = scanning_procedure_shown(Handle_coords,colour_data)
         result = result_dictionary_shown["Handle"]
@@ -267,7 +267,7 @@ def do_Valve_Handle_scanning(cam_received):
         angle_average = 99
 
     angle_average = ("%.2f" % round(angle_average,2))                # Convert to the required format
-    end_multiple_scanning_results(final_result, angle_average)
+    # end_multiple_scanning_results(final_result, angle_average)
     fault_detection_output = {"angle_information": angle_average,
                               "fault_detection_feedback": final_result
                              }

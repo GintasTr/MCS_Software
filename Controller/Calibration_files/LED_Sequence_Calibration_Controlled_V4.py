@@ -20,7 +20,7 @@ def setup():
 def GetImage():
     #img = cam.getImage()
     img = cam.getImage()                                    ##ONLY FOR LAPTOP DUE TO FRAME BUFFERS?
-    img = img.flipVertical()
+    # img = img.flipVertical()
     return img
 
 

@@ -207,6 +207,9 @@ def perform_calibration_procedure(cam_received):
     setup(cam_received)
     demo_images.calibration_start()
 
+    # To get the location and size of QR code
+    # qr_data = qr_code_calibration()
+
     flat_data = Flat_Calibration()
 
     slope_data = Slope_Calibration(flat_data["AvHue"], flat_data["AvSat"], flat_data["StdSat"],

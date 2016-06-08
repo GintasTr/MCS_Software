@@ -101,9 +101,9 @@ def calculate_average(results):
 # Main function:
 def do_Orange_Flap_scanning(cam_received, location_byte): ## DEBUGING TESTING
     STORAGE_FILE = "Orange_flap_calibration_data.txt"
-    blobs_threshold_main = 240           # 170 on laptop.
+    blobs_threshold_main = 235           # 170 on laptop.
                                          # thresholds for calibration blob detection and main process blob detection
-    blobs_min_size_main = 1000          # 1000 On laptop
+    blobs_min_size_main = 2500          # 1000 On laptop
 
     setup(cam_received)
 

@@ -95,6 +95,8 @@ class orange_scanning_images():
                                text_colour, width = 3)
 
         img.dl().setFontSize(35)
+
+
         # to show the width:
         width_text = "%s" % detected_flap.width()
         width_x = int(detected_flap.bottomLeftCorner()[0] + detected_flap.width()/2 - 15)
